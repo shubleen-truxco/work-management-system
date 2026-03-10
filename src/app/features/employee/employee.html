@@ -1,0 +1,73 @@
+<div class="employee-panel">
+  <!-- Header -->
+  <header class="header">
+    <div class="logo">Work Management</div>
+    <div class="user-info">
+      <button (click)="logout()">Logout</button>
+    </div>
+  </header>
+
+  <!-- Sidebar + Main -->
+  <div class="content">
+    <!-- Sidebar -->
+    <nav class="sidebar">
+      <ul>
+        <li><a routerLink="/dashboard">Dashboard</a></li>
+        <li><a routerLink="/employees" class="active">Employees</a></li>
+        <li><a routerLink="/profile">Profile</a></li>
+      </ul>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="main">
+      <div class="top-bar">
+        <input
+          type="text"
+          placeholder="Search employees..."
+          [(ngModel)]="searchText"
+          (input)="onSearch()"
+        />
+        <button >Add Employee</button>
+      </div>
+
+      <table class="employee-table">
+        <thead>
+          <tr>
+            <th>Emp ID</th>
+            <th>Name</th>
+            <th>Email</th>
+            <th>Mobile</th>
+            <th>Role</th>
+            <th>Designation</th>
+            <th>Status</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let emp of employees">
+            <td>{{ emp.empId }}</td>
+            <td>{{ emp.firstName }} {{ emp.lastName }}</td>
+            <td>{{ emp.emailId }}</td>
+            <td>{{ emp.countryCode }} {{ emp.mobileNumber }}</td>
+            <td>{{ emp.role }}</td>
+            <td>{{ emp.designationName }}</td>
+            <td>
+              <span [class.active]="emp.status" [class.inactive]="!emp.status">
+                {{ emp.status ? 'Active' : 'Inactive' }}
+              </span>
+            </td>
+            <td>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+
+      <!-- Pagination -->
+      <div class="pagination">
+        <button (click)="prevPage()" [disabled]="page === 1">Prev</button>
+        <span>Page {{ page }} of {{ totalPages }}</span>
+        <button (click)="nextPage()" [disabled]="page === totalPages">Next</button>
+      </div>
+    </main>
+  </div>
+</div>

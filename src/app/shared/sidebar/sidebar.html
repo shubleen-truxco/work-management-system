@@ -1,0 +1,56 @@
+<aside class="sidebar" [ngClass]="{ 'collapsed': isCollapsed }">
+  <div class="sidebar-header">
+    <div class="logo">Admin</div>
+    <button class="toggle-btn" (click)="toggleCollapse()">
+      {{ isCollapsed ? '→' : '←' }}
+    </button>
+  </div>
+
+  <nav class="sidebar-nav">
+    <ul>
+      <li routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}">
+        <a routerLink="/admin/dashboard">
+          <span class="icon">🏠</span>
+          <span class="text">Dashboard</span>
+        </a>
+      </li>
+      <li routerLinkActive="active">
+        <a routerLink="/admin/users">
+          <span class="icon">👥</span>
+          <span class="text">Users</span>
+        </a>
+      </li>
+      <li routerLinkActive="active">
+        <a routerLink="/admin/products">
+          <span class="icon">📦</span>
+          <span class="text">Products</span>
+        </a>
+      </li>
+      <li routerLinkActive="active">
+        <a routerLink="/admin/orders">
+          <span class="icon">🛒</span>
+          <span class="text">Orders</span>
+        </a>
+      </li>
+      <li routerLinkActive="active">
+        <a routerLink="/admin/reports">
+          <span class="icon">📊</span>
+          <span class="text">Reports</span>
+        </a>
+      </li>
+      <li routerLinkActive="active">
+        <a routerLink="/admin/settings">
+          <span class="icon">⚙️</span>
+          <span class="text">Settings</span>
+        </a>
+      </li>
+    </ul>
+  </nav>
+
+  <div class="sidebar-footer">
+    <a (click)="logout()" class="logout-link">
+      <span class="icon">🚪</span>
+      <span class="text">Logout</span>
+    </a>
+  </div>
+</aside>
