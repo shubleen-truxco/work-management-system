@@ -1,0 +1,478 @@
+<div class="app-shell">
+  <app-sidebar></app-sidebar>
+
+  <div class="settings-panel">
+
+    <!-- Header -->
+    <header class="header">
+      <div class="header-left">
+        <span class="page-label">CONFIGURATION</span>
+        <h1 class="page-title">Settings</h1>
+      </div>
+      <div class="user-info">
+        <div class="user-avatar">A</div>
+        <span class="user-name">Admin</span>
+      </div>
+    </header>
+
+    <div class="settings-body">
+
+      <!-- Settings Sidebar Nav -->
+      <aside class="settings-nav">
+        <div class="settings-nav-section">
+          <p class="settings-nav-group-label">General</p>
+          <ul>
+            <li *ngFor="let item of generalSettings">
+              <a class="settings-nav-item"
+                [class.active]="activePanel === item.key"
+                (click)="setPanel(item.key)">
+                <span class="material-icons">{{ item.icon }}</span>
+                <span>{{ item.label }}</span>
+                <span class="material-icons nav-arrow">chevron_right</span>
+              </a>
+            </li>
+          </ul>
+        </div>
+
+        <div class="settings-nav-section">
+          <p class="settings-nav-group-label">Management</p>
+          <ul>
+            <li *ngFor="let item of managementSettings">
+              <a class="settings-nav-item"
+                [class.active]="activePanel === item.key"
+                (click)="setPanel(item.key)">
+                <span class="material-icons">{{ item.icon }}</span>
+                <span>{{ item.label }}</span>
+                <span class="material-icons nav-arrow">chevron_right</span>
+              </a>
+            </li>
+          </ul>
+        </div>
+
+        <div class="settings-nav-section">
+          <p class="settings-nav-group-label">System</p>
+          <ul>
+            <li *ngFor="let item of systemSettings">
+              <a class="settings-nav-item"
+                [class.active]="activePanel === item.key"
+                (click)="setPanel(item.key)">
+                <span class="material-icons">{{ item.icon }}</span>
+                <span>{{ item.label }}</span>
+                <span class="material-icons nav-arrow">chevron_right</span>
+              </a>
+            </li>
+          </ul>
+        </div>
+      </aside>
+
+      <!-- Settings Content Panel -->
+      <main class="settings-content">
+
+        <!-- ── Company Settings ── -->
+        <div class="panel" *ngIf="activePanel === 'company'">
+          <div class="panel-header">
+            <span class="material-icons panel-icon">business</span>
+            <div>
+              <p class="panel-label">GENERAL</p>
+              <h2 class="panel-title">Company Settings</h2>
+            </div>
+          </div>
+          <div class="panel-body">
+            <div class="form-row">
+              <div class="form-group">
+                <label class="form-label">Company Name</label>
+                <div class="input-wrap">
+                  <span class="material-icons input-icon">business</span>
+                  <input class="form-input" type="text" placeholder="Enter company name"
+                    [(ngModel)]="company.name" />
+                </div>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Company Email</label>
+                <div class="input-wrap">
+                  <span class="material-icons input-icon">email</span>
+                  <input class="form-input" type="email" placeholder="Enter company email"
+                    [(ngModel)]="company.email" />
+                </div>
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label class="form-label">Phone Number</label>
+                <div class="input-wrap">
+                  <span class="material-icons input-icon">phone</span>
+                  <input class="form-input" type="tel" placeholder="Enter phone number"
+                    [(ngModel)]="company.phone" />
+                </div>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Website</label>
+                <div class="input-wrap">
+                  <span class="material-icons input-icon">language</span>
+                  <input class="form-input" type="url" placeholder="https://example.com"
+                    [(ngModel)]="company.website" />
+                </div>
+              </div>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Address</label>
+              <div class="input-wrap">
+                <span class="material-icons input-icon">location_on</span>
+                <input class="form-input" type="text" placeholder="Enter company address"
+                  [(ngModel)]="company.address" />
+              </div>
+            </div>
+            <div class="panel-footer">
+              <button class="btn-save" (click)="saveCompany()">
+                <span class="material-icons">save</span> Save Changes
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── Designation ── -->
+        <div class="panel" *ngIf="activePanel === 'designation'">
+          <div class="panel-header">
+            <span class="material-icons panel-icon">work</span>
+            <div>
+              <p class="panel-label">MANAGEMENT</p>
+              <h2 class="panel-title">Designations</h2>
+            </div>
+          </div>
+          <div class="panel-body">
+            <!-- Add form -->
+            <div class="add-row">
+              <div class="input-wrap" style="flex:1">
+                <span class="material-icons input-icon">work_outline</span>
+                <input class="form-input" type="text"
+                  placeholder="Enter designation name e.g. Developer"
+                  [(ngModel)]="newDesignation"
+                  (keyup.enter)="addDesignation()" />
+              </div>
+              <button class="btn-add" (click)="addDesignation()" [disabled]="!newDesignation.trim()">
+                <span class="material-icons">add</span> Add
+              </button>
+            </div>
+
+            <!-- List -->
+            <div class="item-list">
+              <div class="empty-state" *ngIf="designations.length === 0">
+                <span class="material-icons">work_off</span>
+                <p>No designations added yet</p>
+              </div>
+              <div class="list-item" *ngFor="let d of designations; let i = index">
+                <div class="list-item-left">
+                  <span class="list-index">{{ i + 1 }}</span>
+                  <span class="list-name" *ngIf="!d.editing">{{ d.name }}</span>
+                  <input class="form-input inline-edit" *ngIf="d.editing"
+                    [(ngModel)]="d.editName"
+                    (keyup.enter)="saveDesignation(d)"
+                    (keyup.escape)="cancelEdit(d)" />
+                </div>
+                <div class="list-item-actions">
+                  <button class="icon-btn edit" (click)="editDesignation(d)" *ngIf="!d.editing" title="Edit">
+                    <span class="material-icons">edit</span>
+                  </button>
+                  <button class="icon-btn save" (click)="saveDesignation(d)" *ngIf="d.editing" title="Save">
+                    <span class="material-icons">check</span>
+                  </button>
+                  <button class="icon-btn cancel" (click)="cancelEdit(d)" *ngIf="d.editing" title="Cancel">
+                    <span class="material-icons">close</span>
+                  </button>
+                  <button class="icon-btn delete" (click)="deleteDesignation(d)" title="Delete">
+                    <span class="material-icons">delete</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── Task Categories ── -->
+        <div class="panel" *ngIf="activePanel === 'task-categories'">
+          <div class="panel-header">
+            <span class="material-icons panel-icon">category</span>
+            <div>
+              <p class="panel-label">MANAGEMENT</p>
+              <h2 class="panel-title">Task Categories</h2>
+            </div>
+          </div>
+          <div class="panel-body">
+            <div class="add-row">
+              <div class="input-wrap" style="flex:1">
+                <span class="material-icons input-icon">label</span>
+                <input class="form-input" type="text"
+                  placeholder="Enter category name e.g. Development"
+                  [(ngModel)]="newCategory"
+                  (keyup.enter)="addCategory()" />
+              </div>
+              <div class="color-pick-wrap">
+                <input type="color" class="color-picker" [(ngModel)]="newCategoryColor" title="Pick color" />
+              </div>
+              <button class="btn-add" (click)="addCategory()" [disabled]="!newCategory.trim()">
+                <span class="material-icons">add</span> Add
+              </button>
+            </div>
+
+            <div class="category-grid">
+              <div class="empty-state" *ngIf="taskCategories.length === 0">
+                <span class="material-icons">category</span>
+                <p>No categories added yet</p>
+              </div>
+              <div class="category-card" *ngFor="let cat of taskCategories">
+                <div class="category-color-bar" [style.background]="cat.color"></div>
+                <div class="category-body">
+                  <span class="category-name">{{ cat.name }}</span>
+                  <div class="category-actions">
+                    <button class="icon-btn delete" (click)="deleteCategory(cat)" title="Delete">
+                      <span class="material-icons">delete</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── Notifications ── -->
+        <div class="panel" *ngIf="activePanel === 'notifications'">
+          <div class="panel-header">
+            <span class="material-icons panel-icon">notifications</span>
+            <div>
+              <p class="panel-label">SYSTEM</p>
+              <h2 class="panel-title">Notification Preferences</h2>
+            </div>
+          </div>
+          <div class="panel-body">
+            <div class="notif-group">
+              <p class="notif-group-title">Email Notifications</p>
+              <div class="notif-item" *ngFor="let n of emailNotifications">
+                <div class="notif-info">
+                  <span class="material-icons notif-icon">{{ n.icon }}</span>
+                  <div>
+                    <p class="notif-name">{{ n.label }}</p>
+                    <p class="notif-desc">{{ n.desc }}</p>
+                  </div>
+                </div>
+                <label class="toggle-switch">
+                  <input type="checkbox" [(ngModel)]="n.enabled" />
+                  <span class="toggle-slider"></span>
+                </label>
+              </div>
+            </div>
+
+            <div class="notif-group">
+              <p class="notif-group-title">Push Notifications</p>
+              <div class="notif-item" *ngFor="let n of pushNotifications">
+                <div class="notif-info">
+                  <span class="material-icons notif-icon">{{ n.icon }}</span>
+                  <div>
+                    <p class="notif-name">{{ n.label }}</p>
+                    <p class="notif-desc">{{ n.desc }}</p>
+                  </div>
+                </div>
+                <label class="toggle-switch">
+                  <input type="checkbox" [(ngModel)]="n.enabled" />
+                  <span class="toggle-slider"></span>
+                </label>
+              </div>
+            </div>
+
+            <div class="panel-footer">
+              <button class="btn-save" (click)="saveNotifications()">
+                <span class="material-icons">save</span> Save Preferences
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── Work Hours ── -->
+        <div class="panel" *ngIf="activePanel === 'work-hours'">
+          <div class="panel-header">
+            <span class="material-icons panel-icon">schedule</span>
+            <div>
+              <p class="panel-label">GENERAL</p>
+              <h2 class="panel-title">Work Hours</h2>
+            </div>
+          </div>
+          <div class="panel-body">
+            <div class="form-row">
+              <div class="form-group">
+                <label class="form-label">Default Time In</label>
+                <div class="input-wrap">
+                  <span class="material-icons input-icon">login</span>
+                  <input class="form-input" type="time" [(ngModel)]="workHours.timeIn" />
+                </div>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Default Break Duration</label>
+                <div class="input-wrap">
+                  <span class="material-icons input-icon">free_breakfast</span>
+                  <input class="form-input" type="time" [(ngModel)]="workHours.breakTime" />
+                </div>
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label class="form-label">Working Days</label>
+                <div class="days-wrap">
+                  <button *ngFor="let day of weekDays"
+                    class="day-btn"
+                    [class.active]="workHours.workDays.includes(day.key)"
+                    (click)="toggleDay(day.key)">
+                    {{ day.label }}
+                  </button>
+                </div>
+              </div>
+            </div>
+            <div class="panel-footer">
+              <button class="btn-save" (click)="saveWorkHours()">
+                <span class="material-icons">save</span> Save Changes
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── Security ── -->
+        <div class="panel" *ngIf="activePanel === 'security'">
+          <div class="panel-header">
+            <span class="material-icons panel-icon">security</span>
+            <div>
+              <p class="panel-label">SYSTEM</p>
+              <h2 class="panel-title">Security Settings</h2>
+            </div>
+          </div>
+          <div class="panel-body">
+            <div class="security-item">
+              <div class="security-info">
+                <span class="material-icons security-icon">password</span>
+                <div>
+                  <p class="security-name">Change Password</p>
+                  <p class="security-desc">Update your admin account password</p>
+                </div>
+              </div>
+              <button class="btn-outline" (click)="showChangePassword = !showChangePassword">
+                {{ showChangePassword ? 'Cancel' : 'Change' }}
+              </button>
+            </div>
+
+            <div class="change-password-form" *ngIf="showChangePassword">
+              <div class="form-group">
+                <label class="form-label">Current Password</label>
+                <div class="input-wrap">
+                  <span class="material-icons input-icon">lock</span>
+                  <input class="form-input" type="password" placeholder="Enter current password"
+                    [(ngModel)]="passwordForm.current" />
+                </div>
+              </div>
+              <div class="form-row">
+                <div class="form-group">
+                  <label class="form-label">New Password</label>
+                  <div class="input-wrap">
+                    <span class="material-icons input-icon">lock_open</span>
+                    <input class="form-input" type="password" placeholder="Enter new password"
+                      [(ngModel)]="passwordForm.newPass" />
+                  </div>
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Confirm Password</label>
+                  <div class="input-wrap">
+                    <span class="material-icons input-icon">lock_open</span>
+                    <input class="form-input" type="password" placeholder="Confirm new password"
+                      [(ngModel)]="passwordForm.confirm" />
+                  </div>
+                </div>
+              </div>
+              <div class="panel-footer">
+                <button class="btn-save" (click)="changePassword()">
+                  <span class="material-icons">save</span> Update Password
+                </button>
+              </div>
+            </div>
+
+            <div class="security-item">
+              <div class="security-info">
+                <span class="material-icons security-icon">devices</span>
+                <div>
+                  <p class="security-name">Active Sessions</p>
+                  <p class="security-desc">Manage devices logged into your account</p>
+                </div>
+              </div>
+              <span class="session-badge">1 Active</span>
+            </div>
+
+            <div class="security-item">
+              <div class="security-info">
+                <span class="material-icons security-icon">history</span>
+                <div>
+                  <p class="security-name">Login History</p>
+                  <p class="security-desc">View recent login activity</p>
+                </div>
+              </div>
+              <button class="btn-outline">View</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── Appearance ── -->
+        <div class="panel" *ngIf="activePanel === 'appearance'">
+          <div class="panel-header">
+            <span class="material-icons panel-icon">palette</span>
+            <div>
+              <p class="panel-label">GENERAL</p>
+              <h2 class="panel-title">Appearance</h2>
+            </div>
+          </div>
+          <div class="panel-body">
+            <div class="form-group">
+              <label class="form-label">Theme</label>
+              <div class="theme-options">
+                <div class="theme-card" [class.active]="appearance.theme === 'light'"
+                  (click)="appearance.theme = 'light'">
+                  <div class="theme-preview light-preview"></div>
+                  <span>Light</span>
+                </div>
+                <div class="theme-card" [class.active]="appearance.theme === 'dark'"
+                  (click)="appearance.theme = 'dark'">
+                  <div class="theme-preview dark-preview"></div>
+                  <span>Dark</span>
+                </div>
+              </div>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Language</label>
+              <div class="input-wrap">
+                <span class="material-icons input-icon">language</span>
+                <select class="form-select" [(ngModel)]="appearance.language">
+                  <option value="en">English</option>
+                  <option value="hi">Hindi</option>
+                  <option value="fr">French</option>
+                  <option value="de">German</option>
+                </select>
+              </div>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Timezone</label>
+              <div class="input-wrap">
+                <span class="material-icons input-icon">schedule</span>
+                <select class="form-select" [(ngModel)]="appearance.timezone">
+                  <option value="IST">IST — Asia/Kolkata (UTC+5:30)</option>
+                  <option value="UTC">UTC — Coordinated Universal Time</option>
+                  <option value="EST">EST — Eastern Standard Time (UTC-5)</option>
+                  <option value="PST">PST — Pacific Standard Time (UTC-8)</option>
+                  <option value="GMT">GMT — Greenwich Mean Time (UTC+0)</option>
+                </select>
+              </div>
+            </div>
+            <div class="panel-footer">
+              <button class="btn-save" (click)="saveAppearance()">
+                <span class="material-icons">save</span> Save Preferences
+              </button>
+            </div>
+          </div>
+        </div>
+
+      </main>
+    </div>
+  </div>
+</div>

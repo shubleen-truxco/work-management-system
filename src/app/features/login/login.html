@@ -1,28 +1,96 @@
-<div class="admin-login-container">
-  <h5>Admin login</h5>
-  
-  <form (ngSubmit)="onSubmit()" class="admin-login-form">
-    <div class="form-group">
-      <input type="username" id="username" [(ngModel)]="username" name="username" placeholder="Username" required />
+<!-- Add to index.html <head> if not already present -->
+<!-- <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"> -->
+
+<div class="login-shell">
+
+  <!-- Left decorative panel -->
+  <div class="login-aside">
+    <div class="aside-content">
+      <div class="aside-logo">
+        <span class="material-icons">admin_panel_settings</span>
+      </div>
+      <h1 class="aside-title">Work<br/>Management</h1>
+      <p class="aside-sub">Manage your workforce efficiently with our powerful admin dashboard.</p>
+      <div class="aside-dots">
+        <span class="dot active"></span>
+        <span class="dot"></span>
+        <span class="dot"></span>
+      </div>
     </div>
-
-<div class="form-group password-wrapper">
-  <div class="password-input">
-    <input
-      [type]="showPassword ? 'text' : 'password'"
-      id="password"
-      [(ngModel)]="password"
-      name="password"
-      placeholder="Password"
-      required
-    />
-    <span class="eye-icon" (click)="togglePassword()">
-      <i [ngClass]="showPassword ? 'fa fa-eye-slash' : 'fa fa-eye'"></i>
-    </span>
   </div>
-</div>
-    <div *ngIf="errorMessage" class="error-message">{{ errorMessage }}</div>
 
-    <button type="submit">Login</button>
-  </form>
+  <!-- Right login form -->
+  <div class="login-main">
+    <div class="login-card">
+
+      <!-- Header -->
+      <div class="login-header">
+        <div class="login-icon">
+          <span class="material-icons">lock</span>
+        </div>
+        <p class="login-label">ADMIN PORTAL</p>
+        <h2 class="login-title">Welcome Back</h2>
+        <p class="login-sub">Sign in to your admin account</p>
+      </div>
+
+      <!-- Form -->
+      <form (ngSubmit)="onSubmit()" class="login-form">
+
+        <!-- Username -->
+        <div class="form-group" [class.has-error]="errorMessage">
+          <label class="form-label">Username</label>
+          <div class="input-wrap">
+            <i class="fa fa-user input-icon"></i>
+            <input
+              type="text"
+              id="username"
+              [(ngModel)]="username"
+              name="username"
+              placeholder="Enter your username"
+              autocomplete="username"
+              required />
+          </div>
+        </div>
+
+        <!-- Password -->
+        <div class="form-group" [class.has-error]="errorMessage">
+          <label class="form-label">Password</label>
+          <div class="input-wrap">
+            <i class="fa fa-lock input-icon"></i>
+            <input
+              [type]="showPassword ? 'text' : 'password'"
+              id="password"
+              [(ngModel)]="password"
+              name="password"
+              placeholder="Enter your password"
+              autocomplete="current-password"
+              required />
+            <button type="button" class="eye-btn" (click)="togglePassword()">
+              <i [class]="showPassword ? 'fa fa-eye-slash' : 'fa fa-eye'"></i>
+            </button>
+          </div>
+        </div>
+
+        <!-- Error -->
+        <div class="error-banner" *ngIf="errorMessage">
+          <i class="fa fa-circle-exclamation"></i>
+          {{ errorMessage }}
+        </div>
+
+        <!-- Submit -->
+        <button type="submit" class="login-btn" [disabled]="isLoading">
+          <span *ngIf="!isLoading">
+            <i class="fa fa-arrow-right-to-bracket"></i>
+            Sign In
+          </span>
+          <span *ngIf="isLoading">
+            <i class="fa fa-circle-notch fa-spin"></i>
+            Signing in...
+          </span>
+        </button>
+
+      </form>
+    </div>
+  </div>
+
 </div>

@@ -1,65 +1,482 @@
-<app-sidebar></app-sidebar>
-<div class="employee-panel">
-  <!-- Header -->
-  <header class="header">
-    <div class="logo">Work Management</div>
-    <div class="user-info">
-      <button (click)="logout()">Logout</button>
-    </div>
-  </header>
+<div class="app-shell">
+  <app-sidebar></app-sidebar>
 
-  <!-- Sidebar + Main -->
-  <div class="content">
-    <!-- Main Content -->
+  <div class="employee-panel">
+    <header class="header">
+      <div class="header-left">
+        <span class="page-label">WORKFORCE</span>
+        <h1 class="page-title">Employee Directory</h1>
+      </div>
+      <div class="user-info">
+        <div class="user-avatar">A</div>
+        <span class="user-name">Admin</span>
+        <button class="logout-btn" (click)="logout()">
+          <span class="material-icons">logout</span>
+          Logout
+        </button>
+      </div>
+    </header>
+
     <main class="main">
+
+      <!-- Top Bar -->
       <div class="top-bar">
-        <input
-          type="text"
-          placeholder="Search employees..."
-          [(ngModel)]="searchText"
-          (input)="onSearch()"
-        />
-        <button >Add Employee</button>
+        <div class="search-wrap">
+          <span class="material-icons search-icon">search</span>
+          <input type="text" placeholder="Search employees..." [(ngModel)]="searchText" (input)="onSearch()" />
+        </div>
+        <button class="add-btn" (click)="openAddModal()">
+          <span class="material-icons">person_add</span>
+          Add Employee
+        </button>
       </div>
 
-      <table class="employee-table">
-        <thead>
-          <tr>
-            <th>Emp ID</th>
-            <th>Name</th>
-            <th>Email</th>
-            <th>Mobile</th>
-            <th>Role</th>
-            <th>Designation</th>
-            <th>Status</th>
-            <th>Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr *ngFor="let emp of employees">
-            <td>{{ emp.empId }}</td>
-            <td>{{ emp.firstName }} {{ emp.lastName }}</td>
-            <td>{{ emp.emailId }}</td>
-            <td>{{ emp.countryCode }} {{ emp.mobileNumber }}</td>
-            <td>{{ emp.role }}</td>
-            <td>{{ emp.designationName }}</td>
-            <td>
-              <span [class.active]="emp.status" [class.inactive]="!emp.status">
-                {{ emp.status ? 'Active' : 'Inactive' }}
-              </span>
-            </td>
-            <td>
-            </td>
-          </tr>
-        </tbody>
-      </table>
+      <!-- Table -->
+      <div class="table-wrap">
+        <table class="employee-table">
+          <thead>
+            <tr>
+              <th>Emp ID</th>
+              <th>Name</th>
+              <th>Email</th>
+              <th>Mobile</th>
+              <th>Role</th>
+              <th>Designation</th>
+              <th>Status</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngIf="filteredEmployees.length === 0">
+              <td colspan="8" class="empty-state">
+                <span class="material-icons">search_off</span>
+                <p>No employees found</p>
+              </td>
+            </tr>
+            <tr *ngFor="let emp of filteredEmployees">
+              <td>
+                <span class="emp-id" *ngIf="emp.empId; else noEmpId">{{ emp.empId }}</span>
+                <ng-template #noEmpId><span class="text-muted">—</span></ng-template>
+              </td>
+              <td class="name-cell">
+                <div class="avatar-mini">{{ getInitial(emp) }}</div>
+                <span>{{ getDisplayName(emp) }}</span>
+              </td>
+              <td>{{ emp.emailId || '—' }}</td>
+              <td>
+                <span *ngIf="emp.mobileNumber; else noPhone">
+                  {{ emp.countryCode }} {{ emp.mobileNumber }}
+                </span>
+                <ng-template #noPhone><span class="text-muted">—</span></ng-template>
+              </td>
+              <td>
+                <span class="role-badge" [class.role-admin]="emp.role === 'ADMIN'">
+                  {{ emp.role || '—' }}
+                </span>
+              </td>
+              <td>{{ emp.designationName || '—' }}</td>
+              <td>
+                <span class="status-pill" [class.active]="emp.status === true" [class.inactive]="emp.status === false"
+                  [class.unknown]="emp.status === null">
+                  <span class="status-dot"></span>
+                  {{ emp.status === true ? 'Active' : emp.status === false ? 'Inactive' : 'N/A' }}
+                </span>
+              </td>
+              <td class="actions">
+                <button class="action-btn edit" title="Edit" (click)="openEditModal(emp)">
+                  <span class="material-icons">edit</span>
+                </button>
+                <button class="action-btn view" title="View" (click)="openViewModal(emp)">
+                  <span class="material-icons">visibility</span>
+                </button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
 
       <!-- Pagination -->
-      <div class="pagination">
-        <button (click)="prevPage()" [disabled]="page === 1">Prev</button>
-        <span>Page {{ page }} of {{ totalPages }}</span>
-        <button (click)="nextPage()" [disabled]="page === totalPages">Next</button>
+      <div class="pagination" *ngIf="totalPages > 1">
+        <button class="page-btn" (click)="prevPage()" [disabled]="isFirst">
+          <span class="material-icons">chevron_left</span>
+        </button>
+        <div class="page-numbers">
+          <span class="page-current">{{ page }}</span>
+          <span class="page-sep">of</span>
+          <span class="page-total">{{ totalPages }}</span>
+        </div>
+        <button class="page-btn" (click)="nextPage()" [disabled]="isLast">
+          <span class="material-icons">chevron_right</span>
+        </button>
       </div>
+
     </main>
+  </div>
+</div>
+
+<!-- ══════════════ ADD / EDIT MODAL ══════════════ -->
+<div class="modal-overlay" *ngIf="showModal" (click)="closeModal()">
+  <div class="modal" (click)="$event.stopPropagation()">
+
+    <div class="modal-header">
+      <div class="modal-title-wrap">
+        <span class="material-icons modal-title-icon">
+          {{ isEditMode ? 'edit_note' : 'person_add' }}
+        </span>
+        <div>
+          <p class="modal-label">{{ isEditMode ? 'EDIT EMPLOYEE' : 'NEW EMPLOYEE' }}</p>
+          <h2 class="modal-title">{{ isEditMode ? 'Update Details' : 'Add Employee' }}</h2>
+        </div>
+      </div>
+      <button class="modal-close" (click)="closeModal()">
+        <span class="material-icons">close</span>
+      </button>
+    </div>
+
+    <div class="modal-body">
+
+      <!-- First Name + Last Name -->
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">First Name <span class="required">*</span></label>
+          <div class="input-wrap" [class.input-error]="errors.firstName">
+            <span class="material-icons input-icon">person</span>
+            <input class="form-input" type="text" placeholder="Enter first name" [(ngModel)]="form.firstName"
+              (blur)="validateField('firstName')" (input)="clearError('firstName')" />
+          </div>
+          <span class="error-msg" *ngIf="errors.firstName">
+            <span class="material-icons">error_outline</span>{{ errors.firstName }}
+          </span>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Last Name <span class="required">*</span></label>
+          <div class="input-wrap" [class.input-error]="errors.lastName">
+            <span class="material-icons input-icon">person</span>
+            <input class="form-input" type="text" placeholder="Enter last name" [(ngModel)]="form.lastName"
+              (blur)="validateField('lastName')" (input)="clearError('lastName')" />
+          </div>
+          <span class="error-msg" *ngIf="errors.lastName">
+            <span class="material-icons">error_outline</span>{{ errors.lastName }}
+          </span>
+        </div>
+      </div>
+
+      <!-- Phone with Country Code  ({{ c.name }})-->
+      <div class="form-group">
+        <label class="form-label">Phone Number <span class="required">*</span></label>
+        <div class="phone-wrap" [class.input-error]="errors.mobileNumber">
+          <div class="country-code-wrap">
+            <span class="material-icons input-icon">public</span>
+            <select class="form-select country-select" [(ngModel)]="form.countryCode" (change)="onCountryChange()">
+              <option *ngFor="let c of countryCodes" [value]="c.code">
+                {{ c.flag }} {{ c.code }} 
+              </option>
+            </select>
+          </div>
+          <div class="input-wrap phone-input-wrap">
+            <span class="material-icons input-icon">phone</span>
+            <input class="form-input" type="tel" [placeholder]="getPhonePlaceholder()" [maxlength]="getPhoneMaxLength()"
+              [(ngModel)]="form.mobileNumber" (blur)="validateField('mobileNumber')" (input)="onPhoneInput($event)" />
+          </div>
+        </div>
+        <!-- <span class="field-hint" *ngIf="!errors.mobileNumber">
+          <span class="material-icons">info</span>{{ getPhoneHint() }}
+        </span> -->
+        <span class="error-msg" *ngIf="errors.mobileNumber">
+          <span class="material-icons">error_outline</span>{{ errors.mobileNumber }}
+        </span>
+      </div>
+
+      <!-- Email -->
+      <div class="form-group">
+        <label class="form-label">Email Address <span class="required">*</span></label>
+        <div class="input-wrap" [class.input-error]="errors.emailId">
+          <span class="material-icons input-icon">email</span>
+          <input class="form-input" type="email" placeholder="Enter email address" [(ngModel)]="form.emailId"
+            (blur)="validateField('emailId')" (input)="clearError('emailId')" />
+        </div>
+        <span class="error-msg" *ngIf="errors.emailId">
+          <span class="material-icons">error_outline</span>{{ errors.emailId }}
+        </span>
+      </div>
+
+      <!-- Role + Designation -->
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Role <span class="required">*</span></label>
+          <div class="input-wrap">
+            <span class="material-icons input-icon">badge</span>
+            <input class="form-input role-locked" type="text" value="USER" readonly />
+            <span class="lock-icon material-icons">lock</span>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Designation <span class="required">*</span></label>
+          <div class="input-wrap" [class.input-error]="errors.designationId">
+            <span class="material-icons input-icon">work</span>
+            <select class="form-select" [(ngModel)]="form.designationId" (change)="clearError('designationId')">
+              <option value="" disabled>Select designation</option>
+              <option *ngFor="let d of designations" [value]="d.id">{{ d.name }}</option>
+            </select>
+          </div>
+          <span class="error-msg" *ngIf="errors.designationId">
+            <span class="material-icons">error_outline</span>{{ errors.designationId }}
+          </span>
+        </div>
+      </div>
+
+      <!-- Edit-only fields -->
+      <ng-container *ngIf="isEditMode">
+
+        <!-- Emp ID + Location -->
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Employee ID</label>
+            <div class="input-wrap">
+              <span class="material-icons input-icon">tag</span>
+              <input class="form-input" type="text" placeholder="EMP001" [(ngModel)]="form.empId" />
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Location</label>
+            <div class="input-wrap">
+              <span class="material-icons input-icon">location_on</span>
+              <input class="form-input" type="text" placeholder="Enter location" [(ngModel)]="form.location" />
+            </div>
+          </div>
+        </div>
+
+        <!-- Time In + Break Time -->
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Time In</label>
+            <div class="input-wrap">
+              <span class="material-icons input-icon">schedule</span>
+              <input class="form-input" type="time" [(ngModel)]="form.timeIn" />
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Break Time</label>
+            <div class="input-wrap">
+              <span class="material-icons input-icon">free_breakfast</span>
+              <input class="form-input" type="time" [(ngModel)]="form.breakTime" />
+            </div>
+          </div>
+        </div>
+
+        <!-- Status Toggle -->
+        <div class="form-group">
+          <label class="form-label">Status</label>
+          <div class="toggle-wrap">
+            <label class="toggle-switch">
+              <input type="checkbox" [(ngModel)]="form.status" />
+              <span class="toggle-slider"></span>
+            </label>
+            <span class="toggle-label" [class.active]="form.status">
+              {{ form.status ? 'Active' : 'Inactive' }}
+            </span>
+          </div>
+        </div>
+
+      </ng-container>
+    </div>
+
+    <div class="modal-footer">
+      <button type="button" class="modal-btn cancel" (click)="closeModal()">
+        <span class="material-icons">close</span>
+        Cancel
+      </button>
+      <button type="button" class="modal-btn submit" (click)="submitForm()" [disabled]="isSubmitting">
+        <span class="material-icons">
+          {{ isSubmitting ? 'hourglass_top' : (isEditMode ? 'save' : 'person_add') }}
+        </span>
+        {{ isSubmitting ? 'Saving...' : (isEditMode ? 'Save Changes' : 'Add Employee') }}
+      </button>
+    </div>
+
+  </div>
+</div>
+
+<!-- ══════════════ VIEW MODAL ══════════════ -->
+<div class="modal-overlay" *ngIf="showViewModal" (click)="closeViewModal()">
+  <div class="modal modal-view" (click)="$event.stopPropagation()">
+
+    <div class="modal-header">
+      <div class="modal-title-wrap">
+        <span class="material-icons modal-title-icon">badge</span>
+        <div>
+          <p class="modal-label">EMPLOYEE PROFILE</p>
+          <h2 class="modal-title">Full Details</h2>
+        </div>
+      </div>
+      <button class="modal-close" (click)="closeViewModal()">
+        <span class="material-icons">close</span>
+      </button>
+    </div>
+
+    <div class="modal-body" *ngIf="viewEmp">
+
+      <!-- Profile Banner -->
+      <div class="view-banner">
+        <div class="view-avatar">{{ getInitial(viewEmp) }}</div>
+        <div class="view-banner-info">
+          <h3 class="view-name">{{ getDisplayName(viewEmp) }}</h3>
+          <span class="view-role-badge" [class.role-admin]="viewEmp.role === 'ADMIN'">
+            {{ viewEmp.role || '—' }}
+          </span>
+          <span class="status-pill mt-sm" [class.active]="viewEmp.status === true"
+            [class.inactive]="viewEmp.status === false" [class.unknown]="viewEmp.status === null">
+            <span class="status-dot"></span>
+            {{ viewEmp.status === true ? 'Active' : viewEmp.status === false ? 'Inactive' : 'N/A' }}
+          </span>
+        </div>
+        <div class="view-emp-id" *ngIf="viewEmp.empId">
+          <span class="emp-id">{{ viewEmp.empId }}</span>
+        </div>
+      </div>
+
+      <div class="view-sections">
+
+        <!-- Personal -->
+        <div class="view-section">
+          <div class="view-section-title">
+            <span class="material-icons">person</span>Personal Information
+          </div>
+          <div class="view-grid">
+            <div class="view-item">
+              <span class="view-label">First Name</span>
+              <span class="view-value">{{ viewEmp.firstName || '—' }}</span>
+            </div>
+            <div class="view-item">
+              <span class="view-label">Last Name</span>
+              <span class="view-value">{{ viewEmp.lastName || '—' }}</span>
+            </div>
+            <div class="view-item">
+              <span class="view-label">Full Name</span>
+              <span class="view-value">{{ viewEmp.name || getDisplayName(viewEmp) }}</span>
+            </div>
+            <div class="view-item">
+              <span class="view-label">Username</span>
+              <span class="view-value">{{ viewEmp.username || '—' }}</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Contact -->
+        <div class="view-section">
+          <div class="view-section-title">
+            <span class="material-icons">contacts</span>Contact Information
+          </div>
+          <div class="view-grid">
+            <div class="view-item full-width">
+              <span class="view-label">Email Address</span>
+              <span class="view-value">
+                <span class="material-icons view-inline-icon">email</span>
+                {{ viewEmp.emailId || '—' }}
+              </span>
+            </div>
+            <div class="view-item">
+              <span class="view-label">Phone Number</span>
+              <span class="view-value">
+                <span class="material-icons view-inline-icon">phone</span>
+                {{ viewEmp.mobileNumber ? (viewEmp.countryCode + ' ' + viewEmp.mobileNumber) : '—' }}
+              </span>
+            </div>
+            <div class="view-item">
+              <span class="view-label">Location</span>
+              <span class="view-value">
+                <span class="material-icons view-inline-icon">location_on</span>
+                {{ viewEmp.location || '—' }}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Work -->
+        <div class="view-section">
+          <div class="view-section-title">
+            <span class="material-icons">work</span>Work Information
+          </div>
+          <div class="view-grid">
+            <div class="view-item">
+              <span class="view-label">Designation</span>
+              <span class="view-value">{{ viewEmp.designationName || '—' }}</span>
+            </div>
+            <div class="view-item">
+              <span class="view-label">Role</span>
+              <span class="view-value">{{ viewEmp.role || '—' }}</span>
+            </div>
+            <div class="view-item">
+              <span class="view-label">Time In</span>
+              <span class="view-value">
+                <span class="material-icons view-inline-icon">schedule</span>
+                {{ viewEmp.timeIn || '—' }}
+              </span>
+            </div>
+            <div class="view-item">
+              <span class="view-label">Break Time</span>
+              <span class="view-value">
+                <span class="material-icons view-inline-icon">free_breakfast</span>
+                {{ viewEmp.breakTime || '—' }}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Device -->
+        <div class="view-section">
+          <div class="view-section-title">
+            <span class="material-icons">devices</span>Device Information
+          </div>
+          <div class="view-grid">
+            <div class="view-item">
+              <span class="view-label">Device Type</span>
+              <span class="view-value">{{ viewEmp.deviceType || '—' }}</span>
+            </div>
+            <div class="view-item">
+              <span class="view-label">Device ID</span>
+              <span class="view-value view-mono">{{ viewEmp.deviceId || '—' }}</span>
+            </div>
+            <div class="view-item full-width">
+              <span class="view-label">Last Login</span>
+              <span class="view-value">
+                <span class="material-icons view-inline-icon">login</span>
+                {{ viewEmp.lastLoginAt ? (viewEmp.lastLoginAt | date:'dd MMM yyyy, hh:mm a') : '—' }}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <!-- GPS -->
+        <div class="view-section" *ngIf="viewEmp.currentLocationLat">
+          <div class="view-section-title">
+            <span class="material-icons">my_location</span>GPS Coordinates
+          </div>
+          <div class="view-grid">
+            <div class="view-item">
+              <span class="view-label">Latitude</span>
+              <span class="view-value view-mono">{{ viewEmp.currentLocationLat || '—' }}</span>
+            </div>
+            <div class="view-item">
+              <span class="view-label">Longitude</span>
+              <span class="view-value view-mono">{{ viewEmp.currentLocationLon || '—' }}</span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <div class="modal-footer">
+      <button type="button" class="modal-btn cancel" (click)="closeViewModal()">
+        <span class="material-icons">close</span>
+        Close
+      </button>
+      <!-- <button type="button" class="modal-btn submit" (click)="closeViewModal(); openEditModal(viewEmp)">
+        <span class="material-icons">edit</span>
+        Edit Employee
+      </button> -->
+    </div>
+
   </div>
 </div>

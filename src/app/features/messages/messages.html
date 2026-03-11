@@ -1,0 +1,332 @@
+<div class="app-shell">
+  <app-sidebar></app-sidebar>
+
+  <div class="messages-panel">
+
+    <!-- Chat List Sidebar -->
+    <aside class="chat-list-sidebar">
+
+      <!-- Sidebar Header -->
+      <div class="chat-list-header">
+        <div>
+          <p class="page-label">INBOX</p>
+          <h2 class="page-title">Messages</h2>
+        </div>
+        <button class="new-chat-btn" (click)="openNewChatModal()" title="New Chat">
+          <span class="material-icons">edit</span>
+        </button>
+      </div>
+
+      <!-- Search -->
+      <div class="chat-search-wrap">
+        <span class="material-icons chat-search-icon">search</span>
+        <input type="text" class="chat-search-input"
+          placeholder="Search conversations..."
+          [(ngModel)]="searchChat"
+          (input)="filterChats()" />
+      </div>
+
+      <!-- Filter Tabs -->
+      <div class="chat-filter-tabs">
+        <button class="filter-tab" [class.active]="activeFilter === 'all'"
+          (click)="setFilter('all')">All</button>
+        <button class="filter-tab" [class.active]="activeFilter === 'unread'"
+          (click)="setFilter('unread')">
+          Unread
+          <span class="unread-count-badge" *ngIf="unreadCount > 0">{{ unreadCount }}</span>
+        </button>
+        <button class="filter-tab" [class.active]="activeFilter === 'groups'"
+          (click)="setFilter('groups')">Groups</button>
+      </div>
+
+      <!-- Chat List -->
+      <div class="chat-list">
+
+        <!-- Empty -->
+        <div class="chat-list-empty" *ngIf="filteredChats.length === 0">
+          <span class="material-icons">forum</span>
+          <p>No conversations found</p>
+        </div>
+
+        <div class="chat-list-item"
+          *ngFor="let chat of filteredChats"
+          [class.active]="selectedChat?.id === chat.id"
+          [class.unread]="chat.unreadCount > 0"
+          (click)="selectChat(chat)">
+
+          <!-- Avatar -->
+          <div class="chat-avatar-wrap">
+            <div class="chat-avatar" [class.group-avatar]="chat.isGroup">
+              <span class="material-icons" *ngIf="chat.isGroup">group</span>
+              <span *ngIf="!chat.isGroup">{{ chat.name.charAt(0) }}</span>
+            </div>
+            <span class="online-dot" *ngIf="chat.online && !chat.isGroup"></span>
+          </div>
+
+          <!-- Info -->
+          <div class="chat-item-info">
+            <div class="chat-item-top">
+              <span class="chat-item-name">{{ chat.name }}</span>
+              <span class="chat-item-time">{{ chat.lastMessageTime }}</span>
+            </div>
+            <div class="chat-item-bottom">
+              <span class="chat-item-preview">
+                <span class="preview-sender" *ngIf="chat.isGroup && chat.lastSender">
+                  {{ chat.lastSender }}:
+                </span>
+                {{ chat.lastMessage }}
+              </span>
+              <span class="unread-badge" *ngIf="chat.unreadCount > 0">
+                {{ chat.unreadCount }}
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Chat Window -->
+    <div class="chat-window" [class.empty]="!selectedChat">
+
+      <!-- No chat selected -->
+      <div class="chat-empty-state" *ngIf="!selectedChat">
+        <div class="empty-illustration">
+          <span class="material-icons">chat_bubble_outline</span>
+        </div>
+        <h3>Select a conversation</h3>
+        <p>Choose from your existing conversations or start a new one</p>
+        <button class="btn-start-chat" (click)="openNewChatModal()">
+          <span class="material-icons">add</span>
+          New Conversation
+        </button>
+      </div>
+
+      <!-- Active chat -->
+      <ng-container *ngIf="selectedChat">
+
+        <!-- Chat Header -->
+        <div class="chat-header">
+          <div class="chat-header-left">
+            <div class="chat-avatar-wrap">
+              <div class="chat-avatar md" [class.group-avatar]="selectedChat.isGroup">
+                <span class="material-icons" *ngIf="selectedChat.isGroup">group</span>
+                <span *ngIf="!selectedChat.isGroup">{{ selectedChat.name.charAt(0) }}</span>
+              </div>
+              <span class="online-dot" *ngIf="selectedChat.online && !selectedChat.isGroup"></span>
+            </div>
+            <div>
+              <p class="chat-header-name">{{ selectedChat.name }}</p>
+              <p class="chat-header-status">
+                <span *ngIf="selectedChat.isGroup">
+                  {{ selectedChat.members }} members
+                </span>
+                <span *ngIf="!selectedChat.isGroup && selectedChat.online" class="status-online">
+                  Online
+                </span>
+                <span *ngIf="!selectedChat.isGroup && !selectedChat.online" class="status-offline">
+                  {{ selectedChat.lastSeen }}
+                </span>
+              </p>
+            </div>
+          </div>
+          <div class="chat-header-actions">
+            <button class="header-action-btn" title="Search in chat">
+              <span class="material-icons">search</span>
+            </button>
+            <button class="header-action-btn" title="Voice call">
+              <span class="material-icons">call</span>
+            </button>
+            <button class="header-action-btn" title="Video call">
+              <span class="material-icons">videocam</span>
+            </button>
+            <button class="header-action-btn" title="More options">
+              <span class="material-icons">more_vert</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Messages Area -->
+        <div class="messages-area" #messagesArea>
+
+          <!-- Date divider -->
+          <div class="date-divider">
+            <span>Today</span>
+          </div>
+
+          <ng-container *ngFor="let msg of selectedChat.messages">
+
+            <!-- Date divider between days -->
+            <div class="date-divider" *ngIf="msg.dateDivider">
+              <span>{{ msg.dateDivider }}</span>
+            </div>
+
+            <!-- Received message -->
+            <div class="message-row received" *ngIf="!msg.isOwn">
+              <div class="msg-avatar">{{ msg.sender.charAt(0) }}</div>
+              <div class="message-bubble-wrap">
+                <span class="msg-sender-name" *ngIf="selectedChat.isGroup">
+                  {{ msg.sender }}
+                </span>
+                <div class="message-bubble received">
+                  <p class="msg-text">{{ msg.text }}</p>
+                  <!-- Attachment -->
+                  <div class="msg-attachment" *ngIf="msg.attachment">
+                    <span class="material-icons">attach_file</span>
+                    <span>{{ msg.attachment }}</span>
+                  </div>
+                </div>
+                <span class="msg-time">{{ msg.time }}</span>
+              </div>
+            </div>
+
+            <!-- Sent message -->
+            <div class="message-row sent" *ngIf="msg.isOwn">
+              <div class="message-bubble-wrap">
+                <div class="message-bubble sent">
+                  <p class="msg-text">{{ msg.text }}</p>
+                  <div class="msg-attachment" *ngIf="msg.attachment">
+                    <span class="material-icons">attach_file</span>
+                    <span>{{ msg.attachment }}</span>
+                  </div>
+                </div>
+                <div class="msg-meta">
+                  <span class="msg-time">{{ msg.time }}</span>
+                  <span class="material-icons msg-status">
+                    {{ msg.read ? 'done_all' : 'done' }}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+          </ng-container>
+
+          <!-- Typing indicator -->
+          <div class="message-row received" *ngIf="isTyping">
+            <div class="msg-avatar">{{ selectedChat.name.charAt(0) }}</div>
+            <div class="typing-bubble">
+              <span></span><span></span><span></span>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- Message Input -->
+        <div class="message-input-area">
+          <div class="input-toolbar">
+            <button class="toolbar-btn" title="Attach file">
+              <span class="material-icons">attach_file</span>
+            </button>
+            <button class="toolbar-btn" title="Emoji">
+              <span class="material-icons">emoji_emotions</span>
+            </button>
+          </div>
+          <div class="message-input-wrap">
+            <input type="text" class="message-input"
+              placeholder="Type a message..."
+              [(ngModel)]="newMessage"
+              (keyup.enter)="sendMessage()"
+              (input)="onTyping()" />
+          </div>
+          <button class="send-btn" (click)="sendMessage()"
+            [class.active]="newMessage.trim()">
+            <span class="material-icons">send</span>
+          </button>
+        </div>
+
+      </ng-container>
+    </div>
+  </div>
+</div>
+
+<!-- ══════ NEW CHAT MODAL ══════ -->
+<div class="modal-overlay" *ngIf="showNewChatModal" (click)="closeNewChatModal()">
+  <div class="modal new-chat-modal" (click)="$event.stopPropagation()">
+
+    <div class="modal-header">
+      <div class="modal-title-wrap">
+        <span class="material-icons modal-title-icon">chat</span>
+        <div>
+          <p class="modal-label">START CONVERSATION</p>
+          <h2 class="modal-title">New Chat</h2>
+        </div>
+      </div>
+      <button class="modal-close" (click)="closeNewChatModal()">
+        <span class="material-icons">close</span>
+      </button>
+    </div>
+
+    <div class="modal-body">
+
+      <!-- Chat type -->
+      <div class="chat-type-toggle">
+        <button class="type-btn" [class.active]="newChatType === 'direct'"
+          (click)="newChatType = 'direct'">
+          <span class="material-icons">person</span> Direct
+        </button>
+        <button class="type-btn" [class.active]="newChatType === 'group'"
+          (click)="newChatType = 'group'">
+          <span class="material-icons">group</span> Group
+        </button>
+      </div>
+
+      <!-- Group name (if group) -->
+      <div class="form-group" *ngIf="newChatType === 'group'">
+        <label class="form-label">Group Name</label>
+        <div class="input-wrap">
+          <span class="material-icons input-icon">group</span>
+          <input class="form-input" type="text" placeholder="Enter group name"
+            [(ngModel)]="newGroupName" />
+        </div>
+      </div>
+
+      <!-- Search people -->
+      <div class="form-group">
+        <label class="form-label">
+          {{ newChatType === 'group' ? 'Add Members' : 'Select Person' }}
+        </label>
+        <div class="input-wrap">
+          <span class="material-icons input-icon">search</span>
+          <input class="form-input" type="text" placeholder="Search employees..."
+            [(ngModel)]="searchPeople" />
+        </div>
+      </div>
+
+      <!-- People List -->
+      <div class="people-list">
+        <div class="people-item"
+          *ngFor="let p of filteredPeople"
+          [class.selected]="isSelected(p)"
+          (click)="togglePerson(p)">
+          <div class="people-avatar">{{ p.name.charAt(0) }}</div>
+          <div class="people-info">
+            <span class="people-name">{{ p.name }}</span>
+            <span class="people-role">{{ p.role }}</span>
+          </div>
+          <span class="material-icons people-check" *ngIf="isSelected(p)">check_circle</span>
+        </div>
+      </div>
+
+      <!-- Selected chips (group) -->
+      <div class="selected-chips" *ngIf="selectedPeople.length > 0 && newChatType === 'group'">
+        <div class="chip" *ngFor="let p of selectedPeople">
+          {{ p.name }}
+          <span class="material-icons chip-remove" (click)="togglePerson(p)">close</span>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="modal-footer">
+      <button type="button" class="modal-btn cancel" (click)="closeNewChatModal()">
+        <span class="material-icons">close</span> Cancel
+      </button>
+      <button type="button" class="modal-btn submit"
+        (click)="createChat()"
+        [disabled]="selectedPeople.length === 0">
+        <span class="material-icons">chat</span>
+        {{ newChatType === 'group' ? 'Create Group' : 'Start Chat' }}
+      </button>
+    </div>
+
+  </div>
+</div>

@@ -5,22 +5,22 @@ import { environment } from '../../../environments/environment';
 
 
 @Injectable({
-    providedIn: 'root'
+  providedIn: 'root'
 })
 export class ApiService {
-    private readonly baseUrl = environment.apiUrl;
+  private readonly baseUrl = environment.apiUrl;
 
-    constructor(private http: HttpClient) { }
+  constructor(private http: HttpClient) { }
 
-    login(payload: any = {}): Observable<any> {
-        return this.http.post(`${this.baseUrl}/login`, payload);
-    }
+  login(payload: any = {}): Observable<any> {
+    return this.http.post(`${this.baseUrl}/login`, payload);
+  }
 
-    empLogin(payload: any = {}): Observable<any> {
-        return this.http.post(`${this.baseUrl}/employee-login`, payload);
-    }
+  empLogin(payload: any = {}): Observable<any> {
+    return this.http.post(`${this.baseUrl}/employee-login`, payload);
+  }
 
-   saveUser(userData: any): Observable<any> {
+  saveUser(userData: any): Observable<any> {
     return this.http.post(`${this.baseUrl}/save-user`, userData);
   }
 
@@ -51,5 +51,13 @@ export class ApiService {
   getEmployeeById(id: number | string): Observable<any> {
     const params = new HttpParams().set('id', id.toString());
     return this.http.post(`${this.baseUrl}/employee-details`, {}, { params });
+  }
+
+  addDesignation(payload: any): Observable<any> {
+    return this.http.post(`${this.baseUrl}/designation`, payload);
+  }
+
+  getDesignations(): Observable<any> {
+    return this.http.get(`${this.baseUrl}/designation-list`);
   }
 }

@@ -1,46 +1,57 @@
 <aside class="sidebar" [ngClass]="{ 'collapsed': isCollapsed }">
   <div class="sidebar-header">
-    <div class="logo">Admin</div>
+    <div class="logo">
+      <span class="material-icons logo-icon">admin_panel_settings</span>
+      <span class="text">Admin</span>
+    </div>
     <button class="toggle-btn" (click)="toggleCollapse()">
-      {{ isCollapsed ? '→' : '←' }}
+      <span class="material-icons">
+        {{ isCollapsed ? 'chevron_right' : 'chevron_left' }}
+      </span>
     </button>
   </div>
 
   <nav class="sidebar-nav">
     <ul>
       <li routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}">
-        <a routerLink="/admin/dashboard">
-          <span class="icon">🏠</span>
+        <a routerLink="/dashboard" data-tooltip="Dashboard">
+          <span class="material-icons icon">dashboard</span>
           <span class="text">Dashboard</span>
         </a>
       </li>
-      <li routerLinkActive="active">
-        <a routerLink="/employee">
-          <span class="icon">👥</span>
-          <span class="text">Users</span>
+       <li routerLinkActive="active">
+        <a routerLink="/attendance" data-tooltip="Attendance">
+          <span class="material-icons icon">schedule</span>
+          <span class="text">Attendance</span>
         </a>
       </li>
       <li routerLinkActive="active">
-        <a routerLink="/admin/products">
-          <span class="icon">📦</span>
-          <span class="text">Products</span>
+        <a routerLink="/employee" data-tooltip="Users">
+          <span class="material-icons icon">group</span>
+          <span class="text">Employee</span>
         </a>
       </li>
       <li routerLinkActive="active">
-        <a routerLink="/admin/orders">
-          <span class="icon">🛒</span>
-          <span class="text">Orders</span>
+        <a routerLink="/task-management" data-tooltip="Products">
+          <span class="material-icons icon">inventory_2</span>
+          <span class="text">Tasks</span>
         </a>
       </li>
       <li routerLinkActive="active">
-        <a routerLink="/admin/reports">
-          <span class="icon">📊</span>
+        <a routerLink="/messages" data-tooltip="Orders">
+          <span class="material-icons icon">message</span>
+          <span class="text">Messages</span>
+        </a>
+      </li>
+      <li routerLinkActive="active">
+        <a routerLink="/report" data-tooltip="Reports">
+          <span class="material-icons icon">bar_chart</span>
           <span class="text">Reports</span>
         </a>
       </li>
       <li routerLinkActive="active">
-        <a routerLink="/admin/settings">
-          <span class="icon">⚙️</span>
+        <a routerLink="/settings" data-tooltip="Settings">
+          <span class="material-icons icon">settings</span>
           <span class="text">Settings</span>
         </a>
       </li>
@@ -49,7 +60,7 @@
 
   <div class="sidebar-footer">
     <a (click)="logout()" class="logout-link">
-      <span class="icon">🚪</span>
+      <span class="material-icons icon">logout</span>
       <span class="text">Logout</span>
     </a>
   </div>
