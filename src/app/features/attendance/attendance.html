@@ -1,1 +1,447 @@
-<p>attendance works!</p>
+<div class="app-shell">
+  <app-sidebar></app-sidebar>
+
+  <div class="attendance-panel">
+
+    <!-- Header -->
+    <header class="header">
+      <div class="header-left">
+        <span class="page-label">WORKFORCE</span>
+        <h1 class="page-title">Attendance</h1>
+      </div>
+      <div class="header-right">
+        <div class="user-info">
+          <div class="user-avatar">A</div>
+          <span class="user-name">Admin</span>
+        </div>
+      </div>
+    </header>
+
+    <main class="main">
+
+      <!-- Controls Bar -->
+      <div class="controls-bar">
+        <div class="view-toggle">
+          <button class="view-btn" [class.active]="viewMode === 'day'" (click)="setViewMode('day')">
+            <span class="material-icons">today</span> Day
+          </button>
+          <button class="view-btn" [class.active]="viewMode === 'month'" (click)="setViewMode('month')">
+            <span class="material-icons">calendar_month</span> Month
+          </button>
+          <button class="view-btn" [class.active]="viewMode === 'range'" (click)="setViewMode('range')">
+            <span class="material-icons">date_range</span> Range
+          </button>
+        </div>
+
+        <div class="date-controls">
+          <!-- Day -->
+          <div class="date-nav" *ngIf="viewMode === 'day'">
+            <button class="nav-arrow-btn" (click)="prevDay()">
+              <span class="material-icons">chevron_left</span>
+            </button>
+            <div class="input-wrap date-input-wrap">
+              <span class="material-icons input-icon">calendar_today</span>
+              <input type="date" class="form-input date-input"
+                [(ngModel)]="selectedDate" (change)="onDateChange()" />
+            </div>
+            <button class="nav-arrow-btn" (click)="nextDay()">
+              <span class="material-icons">chevron_right</span>
+            </button>
+            <button class="today-btn" (click)="goToday()">Today</button>
+          </div>
+
+          <!-- Month -->
+          <div class="date-nav" *ngIf="viewMode === 'month'">
+            <button class="nav-arrow-btn" (click)="prevMonth()">
+              <span class="material-icons">chevron_left</span>
+            </button>
+            <div class="input-wrap date-input-wrap">
+              <span class="material-icons input-icon">calendar_month</span>
+              <input type="month" class="form-input date-input"
+                [(ngModel)]="selectedMonth" (change)="onMonthChange()" />
+            </div>
+            <button class="nav-arrow-btn" (click)="nextMonth()">
+              <span class="material-icons">chevron_right</span>
+            </button>
+          </div>
+
+          <!-- Range -->
+          <div class="date-nav range-nav" *ngIf="viewMode === 'range'">
+            <div class="input-wrap date-input-wrap">
+              <span class="material-icons input-icon">event</span>
+              <input type="date" class="form-input date-input"
+                [(ngModel)]="rangeStart" (change)="onRangeChange()" />
+            </div>
+            <span class="range-sep">to</span>
+            <div class="input-wrap date-input-wrap">
+              <span class="material-icons input-icon">event</span>
+              <input type="date" class="form-input date-input"
+                [(ngModel)]="rangeEnd" (change)="onRangeChange()" />
+            </div>
+          </div>
+        </div>
+
+        <div class="controls-right">
+          <div class="search-wrap">
+            <span class="material-icons search-icon">search</span>
+            <input type="text" class="search-input"
+              placeholder="Search employee..."
+              [(ngModel)]="searchText"
+              (input)="filterData()" />
+          </div>
+          <button class="export-btn" (click)="exportCSV()">
+            <span class="material-icons">download</span> Export
+          </button>
+        </div>
+      </div>
+
+      <!-- Loading -->
+      <div class="loading-overlay" *ngIf="isLoading">
+        <span class="material-icons spin">sync</span>
+        <span>Loading attendance...</span>
+      </div>
+
+      <ng-container *ngIf="!isLoading">
+
+        <!-- Stats Row -->
+        <div class="stats-row">
+          <div class="stat-card">
+            <div class="stat-icon-wrap teal"><span class="material-icons">groups</span></div>
+            <div>
+              <div class="stat-value">{{ stats.total }}</div>
+              <div class="stat-label">Total Employees</div>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon-wrap green"><span class="material-icons">check_circle</span></div>
+            <div>
+              <div class="stat-value">{{ stats.present }}</div>
+              <div class="stat-label">Present</div>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon-wrap teal-soft"><span class="material-icons">radio_button_checked</span></div>
+            <div>
+              <div class="stat-value">{{ stats.active }}</div>
+              <div class="stat-label">Active Now</div>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon-wrap red"><span class="material-icons">cancel</span></div>
+            <div>
+              <div class="stat-value">{{ stats.absent }}</div>
+              <div class="stat-label">Absent</div>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon-wrap amber"><span class="material-icons">schedule</span></div>
+            <div>
+              <div class="stat-value">{{ stats.late }}</div>
+              <div class="stat-label">Late</div>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon-wrap purple"><span class="material-icons">timer</span></div>
+            <div>
+              <div class="stat-value">{{ stats.avgHours }}h</div>
+              <div class="stat-label">Avg Working Hours</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Date Label -->
+        <div class="date-label-row">
+          <span class="material-icons">event</span>
+          <span class="date-label-text">{{ getDateLabel() }}</span>
+          <span class="record-count">{{ filteredData.length }} records</span>
+        </div>
+
+        <!-- Table -->
+        <div class="table-wrap">
+          <table class="attendance-table">
+            <thead>
+              <tr>
+                <th class="sticky-col">#</th>
+                <th class="sticky-col-2">Employee</th>
+                <th *ngIf="viewMode !== 'day'">Date</th>
+                <th>Time In</th>
+                <th>Time Out</th>
+                <th>Total Break</th>
+                <th>Working Hours</th>
+                <th>Status</th>
+                <th>Overtime</th>
+                <th>Breaks</th>
+              </tr>
+            </thead>
+            <tbody>
+
+              <tr *ngIf="filteredData.length === 0">
+                <td colspan="10" class="empty-state">
+                  <span class="material-icons">search_off</span>
+                  <p>No attendance records found</p>
+                </td>
+              </tr>
+
+              <tr *ngFor="let rec of filteredData; let i = index"
+                [class.late-row]="rec.status === 'Late'"
+                [class.absent-row]="rec.status === 'Absent'"
+                [class.active-row]="rec.status === 'Active'">
+
+                <td class="sticky-col row-num">{{ i + 1 }}</td>
+
+                <!-- Employee -->
+                <td class="sticky-col-2 name-cell">
+                  <div class="avatar-mini">{{ rec.name.charAt(0) }}</div>
+                  <div class="name-info">
+                    <span class="emp-name">{{ rec.name }}</span>
+                    <span class="emp-id-tag">{{ rec.empId }}</span>
+                  </div>
+                </td>
+
+                <!-- Date -->
+                <td *ngIf="viewMode !== 'day'" class="date-cell">
+                  <span class="date-badge">{{ rec.date | date:'dd MMM' }}</span>
+                </td>
+
+                <!-- Time In -->
+                <td>
+                  <span class="time-chip" [class.late-time]="rec.isLate" *ngIf="rec.timeIn; else d1">
+                    <span class="material-icons">login</span> {{ rec.timeIn }}
+                  </span>
+                  <ng-template #d1><span class="null-dash">—</span></ng-template>
+                </td>
+
+                <!-- Time Out -->
+                <td>
+                  <span class="time-chip out" *ngIf="rec.timeOut; else d2">
+                    <span class="material-icons">logout</span> {{ rec.timeOut }}
+                  </span>
+                  <ng-template #d2>
+                    <span class="still-in-chip" *ngIf="rec.status === 'Active'">
+                      <span class="pulse-dot"></span> Still In
+                    </span>
+                    <span class="null-dash" *ngIf="rec.status !== 'Active'">—</span>
+                  </ng-template>
+                </td>
+
+                <!-- Total Break -->
+                <td>
+                  <span class="duration-chip" *ngIf="rec.totalBreak && rec.totalBreak !== '0h 0m'">
+                    {{ rec.totalBreak }}
+                  </span>
+                  <span class="null-dash" *ngIf="!rec.totalBreak || rec.totalBreak === '0h 0m'">—</span>
+                </td>
+
+                <!-- Working Hours -->
+                <td>
+                  <div class="working-hours-cell" *ngIf="rec.workingHours && rec.workingHours !== '0h 0m'; else d3">
+                    <span class="hours-value">{{ rec.workingHours }}</span>
+                    <div class="hours-bar-wrap">
+                      <div class="hours-bar"
+                        [style.width.%]="getHoursPercent(rec.workingHours)"
+                        [class.bar-green]="getHoursPercent(rec.workingHours) >= 90"
+                        [class.bar-amber]="getHoursPercent(rec.workingHours) >= 50 && getHoursPercent(rec.workingHours) < 90"
+                        [class.bar-red]="getHoursPercent(rec.workingHours) < 50">
+                      </div>
+                    </div>
+                  </div>
+                  <ng-template #d3><span class="null-dash">—</span></ng-template>
+                </td>
+
+                <!-- Status -->
+                <td>
+                  <span class="status-pill"
+                    [class.present]="rec.status === 'Present'"
+                    [class.absent]="rec.status === 'Absent'"
+                    [class.late]="rec.status === 'Late'"
+                    [class.half]="rec.status === 'Half Day'"
+                    [class.active]="rec.status === 'Active'">
+                    <span class="status-dot"></span>
+                    {{ rec.status }}
+                  </span>
+                </td>
+
+                <!-- Overtime -->
+                <td>
+                  <span class="overtime-chip"
+                    *ngIf="rec.overtime && rec.overtime !== '0h 0m'">
+                    +{{ rec.overtime }}
+                  </span>
+                  <span class="null-dash"
+                    *ngIf="!rec.overtime || rec.overtime === '0h 0m'">—</span>
+                </td>
+
+                <!-- Breaks View Button -->
+                <td>
+                  <button class="view-breaks-btn"
+                    *ngIf="rec.rawBreaks?.length > 0"
+                    (click)="openBreakModal(rec)">
+                    <span class="material-icons">coffee</span>
+                    {{ rec.rawBreaks.length }}
+                    {{ rec.rawBreaks.length === 1 ? 'Break' : 'Breaks' }}
+                  </button>
+                  <span class="null-dash" *ngIf="!rec.rawBreaks?.length">—</span>
+                </td>
+
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Pagination -->
+        <div class="pagination" *ngIf="viewMode !== 'day' && totalPages > 1">
+          <button class="page-btn" (click)="prevPage()" [disabled]="page === 1">
+            <span class="material-icons">chevron_left</span>
+          </button>
+          <div class="page-numbers">
+            <span class="page-current">{{ page }}</span>
+            <span class="page-sep">of</span>
+            <span class="page-total">{{ totalPages }}</span>
+          </div>
+          <button class="page-btn" (click)="nextPage()" [disabled]="page === totalPages">
+            <span class="material-icons">chevron_right</span>
+          </button>
+        </div>
+
+      </ng-container>
+    </main>
+  </div>
+</div>
+
+<!-- ══════ BREAK DETAILS MODAL ══════ -->
+<div class="modal-overlay" *ngIf="showBreakModal" (click)="closeBreakModal()">
+  <div class="modal break-modal" (click)="$event.stopPropagation()">
+
+    <!-- Modal Header -->
+    <div class="modal-header">
+      <div class="modal-title-wrap">
+        <span class="material-icons modal-title-icon">coffee</span>
+        <div>
+          <p class="modal-label">BREAK DETAILS</p>
+          <h2 class="modal-title">{{ selectedRec?.name }}</h2>
+        </div>
+      </div>
+      <button class="modal-close" (click)="closeBreakModal()">
+        <span class="material-icons">close</span>
+      </button>
+    </div>
+
+    <!-- Employee Summary Strip -->
+    <div class="modal-emp-strip" *ngIf="selectedRec">
+      <div class="strip-item">
+        <span class="material-icons">badge</span>
+        <span>{{ selectedRec.empId }}</span>
+      </div>
+      <div class="strip-item">
+        <span class="material-icons">event</span>
+        <span>{{ selectedRec.date | date:'dd MMM yyyy' }}</span>
+      </div>
+      <div class="strip-item">
+        <span class="material-icons">login</span>
+        <span>In: {{ selectedRec.timeIn || '—' }}</span>
+      </div>
+      <div class="strip-item">
+        <span class="material-icons">logout</span>
+        <span>Out: {{ selectedRec.timeOut || 'Active' }}</span>
+      </div>
+      <div class="strip-item highlight">
+        <span class="material-icons">timer</span>
+        <span>Total Break: {{ selectedRec.totalBreak || '0h 0m' }}</span>
+      </div>
+    </div>
+
+    <!-- Break List -->
+    <div class="modal-body">
+      <div class="break-timeline">
+
+        <div class="break-timeline-item"
+          *ngFor="let b of selectedRec?.rawBreaks; let i = index; let last = last">
+
+          <!-- Index bubble -->
+          <div class="timeline-left">
+            <div class="timeline-bubble">{{ i + 1 }}</div>
+            <div class="timeline-line" *ngIf="!last"></div>
+          </div>
+
+          <!-- Break Card -->
+          <div class="break-card">
+            <div class="break-card-header">
+              <span class="break-label">Break {{ i + 1 }}</span>
+              <span class="break-dur-badge" *ngIf="b.breakDurationMinutes > 0">
+                {{ b.breakDurationMinutes }} min
+              </span>
+              <span class="break-dur-badge short" *ngIf="b.breakDurationMinutes === 0">
+                &lt; 1 min
+              </span>
+            </div>
+
+            <div class="break-card-times">
+              <!-- Start -->
+              <div class="break-time-block start">
+                <div class="break-time-label">
+                  <span class="material-icons">free_breakfast</span>
+                  Break Start
+                </div>
+                <div class="break-time-value">
+                  {{ formatTime(b.breakStart) || '—' }}
+                </div>
+                <div class="break-time-date">
+                  {{ b.breakStart | date:'dd MMM yyyy' }}
+                </div>
+              </div>
+
+              <!-- Arrow -->
+              <div class="break-arrow-col">
+                <div class="break-duration-line">
+                  <div class="break-duration-pill" *ngIf="b.breakDurationMinutes > 0">
+                    {{ b.breakDurationMinutes }}m
+                  </div>
+                  <div class="break-duration-pill short" *ngIf="b.breakDurationMinutes === 0">
+                    &lt;1m
+                  </div>
+                </div>
+                <span class="material-icons arrow-icon">arrow_forward</span>
+              </div>
+
+              <!-- End -->
+              <div class="break-time-block end">
+                <div class="break-time-label">
+                  <span class="material-icons">play_circle</span>
+                  Break End
+                </div>
+                <div class="break-time-value" *ngIf="b.breakEnd">
+                  {{ formatTime(b.breakEnd) }}
+                </div>
+                <div class="break-time-value ongoing" *ngIf="!b.breakEnd">
+                  On Break
+                </div>
+                <div class="break-time-date" *ngIf="b.breakEnd">
+                  {{ b.breakEnd | date:'dd MMM yyyy' }}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Empty -->
+        <div class="no-breaks" *ngIf="!selectedRec?.rawBreaks?.length">
+          <span class="material-icons">coffee_maker</span>
+          <p>No breaks recorded</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="modal-footer">
+      <div class="footer-summary">
+        <span class="material-icons">summarize</span>
+        <span>{{ selectedRec?.rawBreaks?.length || 0 }} break(s) —
+          total {{ selectedRec?.totalBreak || '0h 0m' }}</span>
+      </div>
+      <button class="modal-btn close-btn" (click)="closeBreakModal()">
+        <span class="material-icons">close</span> Close
+      </button>
+    </div>
+
+  </div>
+</div>

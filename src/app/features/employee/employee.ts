@@ -2,7 +2,7 @@ import { ChangeDetectorRef, Component, OnInit } from '@angular/core';
 import { ApiService } from '../../core/services/api.service';
 import { ToastService } from '../../shared/toast/toast.service';
 import { Router } from '@angular/router';
-import { CommonModule } from '@angular/common';
+import { CommonModule, DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Sidebar } from '../../shared/sidebar/sidebar';
 import { ValidationService } from '../../core/services/validation.service';
@@ -10,7 +10,7 @@ import { ValidationService } from '../../core/services/validation.service';
 @Component({
   selector: 'app-employee-panel',
   standalone: true,
-  imports: [CommonModule, FormsModule, Sidebar],
+  imports: [CommonModule, FormsModule, Sidebar, DatePipe],
   templateUrl: './employee.html',
   styleUrls: ['./employee.css'],
 })
@@ -33,10 +33,10 @@ export class EmployeeList implements OnInit {
   showViewModal = false;
   viewEmp: any = null;
 
-  // Validation
-  errors: any = {};
-  countryCodes: any[] = [];
+  // Attendance tab in view modal
+  activeViewTab = 'profile';   // 'profile' | 'attendance'
 
+  errors: any = {};
   form: any = this.emptyForm();
 
   constructor(
@@ -48,18 +48,27 @@ export class EmployeeList implements OnInit {
   ) { }
 
   ngOnInit(): void {
-    this.countryCodes = this.validation.countryCodes;
     this.fetchEmployees();
     this.fetchDesignations();
   }
 
-  // ── Fetch Employees ───────────────────────────────────
+  get countryCodes() { return this.validation.countryCodes; }
+  
+  getProfileUrl(emp: any): string {
+    return this.api.getProfileImageUrl(emp.profile);
+  }
+
+  hasProfile(emp: any): boolean {
+    return !!emp.profile;
+  }
+  // ── Fetch ─────────────────────────────────────────────
   fetchEmployees(): void {
     this.api.getEmployeeList(this.page, this.size, this.searchText).subscribe({
       next: (res: any) => {
         if (res.success) {
           const data = res.data;
-          this.employees = data?.content || [];
+          // API returns data.items (not data.content)
+          this.employees = data?.items ?? [];
           this.totalPages = data?.totalPages ?? 1;
           this.totalItems = data?.totalItems ?? 0;
           this.isFirst = data?.isFirst ?? true;
@@ -74,23 +83,18 @@ export class EmployeeList implements OnInit {
     });
   }
 
-  // ── Fetch Designations ────────────────────────────────
   fetchDesignations(): void {
     this.api.getDesignations().subscribe({
       next: (res: any) => {
-        if (res?.success) {
-          this.designations = res.data || [];
-        } else if (Array.isArray(res)) {
-          this.designations = res;
-        } else {
-          this.designations = [];
-        }
+        if (res?.success) this.designations = res.data || [];
+        else if (Array.isArray(res)) this.designations = res;
+        else this.designations = [];
       },
       error: () => this.toast.show('Failed to load designations', 'error'),
     });
   }
 
-  // ── Filtered list (exclude ADMIN) ─────────────────────
+  // ── Computed ──────────────────────────────────────────
   get filteredEmployees(): any[] {
     return this.employees.filter(e => e.role !== 'ADMIN');
   }
@@ -111,7 +115,28 @@ export class EmployeeList implements OnInit {
       .charAt(0).toUpperCase();
   }
 
-  // ── Phone helpers (delegated to service) ─────────────
+  // attendance helpers
+  getAttendanceStatus(att: any): string {
+    if (!att.timeIn) return 'Absent';
+    if (!att.timeOut) return 'Active';
+    return att.status || 'Present';
+  }
+
+  formatMinutes(mins: number): string {
+    if (!mins && mins !== 0) return '—';
+    const h = Math.floor(mins / 60);
+    const m = mins % 60;
+    return `${h}h ${m}m`;
+  }
+
+  formatTime(dt: string | null): string {
+    if (!dt) return '—';
+    return new Date(dt).toLocaleTimeString('en-US', {
+      hour: '2-digit', minute: '2-digit', hour12: false
+    });
+  }
+
+  // ── Phone helpers ─────────────────────────────────────
   getPhonePlaceholder(): string { return this.validation.getPhonePlaceholder(this.form.countryCode); }
   getPhoneMaxLength(): number { return this.validation.getPhoneMaxLength(this.form.countryCode); }
   getPhoneHint(): string { return this.validation.getPhoneHint(this.form.countryCode); }
@@ -127,7 +152,7 @@ export class EmployeeList implements OnInit {
     this.clearError('mobileNumber');
   }
 
-  // ── Field Validation ──────────────────────────────────
+  // ── Validation ────────────────────────────────────────
   validateField(field: string): void {
     const map: any = {
       firstName: () => this.validation.validateFirstName(this.form.firstName),
@@ -138,9 +163,7 @@ export class EmployeeList implements OnInit {
     };
     if (map[field]) {
       const result = map[field]();
-      result.valid
-        ? delete this.errors[field]
-        : (this.errors[field] = result.message);
+      result.valid ? delete this.errors[field] : (this.errors[field] = result.message);
     }
   }
 
@@ -161,18 +184,10 @@ export class EmployeeList implements OnInit {
   // ── Modal ─────────────────────────────────────────────
   emptyForm() {
     return {
-      firstName: '',
-      lastName: '',
-      countryCode: '+91',
-      mobileNumber: '',
-      emailId: '',
-      role: 'USER',
-      designationId: '',
-      empId: '',
-      location: '',
-      timeIn: '',
-      breakTime: '',
-      status: true,
+      firstName: '', lastName: '', countryCode: '+91',
+      mobileNumber: '', emailId: '', role: 'USER',
+      designationId: '', empId: '', location: '',
+      timeIn: '', breakTime: '', status: true,
     };
   }
 
@@ -215,6 +230,7 @@ export class EmployeeList implements OnInit {
 
   openViewModal(emp: any): void {
     this.viewEmp = emp;
+    this.activeViewTab = 'profile';
     this.showViewModal = true;
   }
 
@@ -223,19 +239,18 @@ export class EmployeeList implements OnInit {
     this.viewEmp = null;
   }
 
+  setViewTab(tab: string): void { this.activeViewTab = tab; }
+
   // ── Submit ────────────────────────────────────────────
   submitForm(): void {
     if (!this.validateAll()) {
       this.toast.show('Please fix the errors before submitting', 'error');
       return;
     }
-
     this.isSubmitting = true;
-
-    const selectedDesignation = this.designations.find(
+    const selectedDes = this.designations.find(
       (d: any) => d.id === Number(this.form.designationId) || d.id === this.form.designationId
     );
-
     const payload: any = {
       firstName: this.form.firstName.trim(),
       lastName: this.form.lastName.trim(),
@@ -243,7 +258,7 @@ export class EmployeeList implements OnInit {
       mobileNumber: this.form.mobileNumber,
       emailId: this.form.emailId.trim(),
       role: 'USER',
-      designationName: selectedDesignation?.name || '',
+      designationName: selectedDes?.name || '',
       empId: this.form.empId || null,
       location: this.form.location || null,
       timeIn: this.form.timeIn || null,
@@ -251,18 +266,14 @@ export class EmployeeList implements OnInit {
       status: this.form.status,
       active: this.form.status,
     };
-
-    if (this.isEditMode && this.editEmpId) {
-      payload.id = this.editEmpId;
-    }
+    if (this.isEditMode && this.editEmpId) payload.id = this.editEmpId;
 
     this.api.saveUser(payload).subscribe({
       next: (res: any) => {
         this.isSubmitting = false;
         if (res.success) {
           this.toast.show(
-            this.isEditMode ? 'Employee updated successfully!' : 'Employee added successfully!',
-            'success'
+            this.isEditMode ? 'Employee updated!' : 'Employee added!', 'success'
           );
           this.closeModal();
           this.fetchEmployees();

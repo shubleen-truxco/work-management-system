@@ -899,3 +899,28 @@
   color: var(--color-text-muted);
   word-break: break-all;
 }
+
+.avatar-mini-img {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid var(--color-border);
+  flex-shrink: 0;
+  display: block;
+}
+
+/* ── Profile image in view modal banner ──────────────── */
+.view-avatar-img-wrap {
+  flex-shrink: 0;
+}
+
+.view-avatar-img {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 3px solid var(--color-border);
+  box-shadow: var(--shadow-card);
+  display: block;
+}

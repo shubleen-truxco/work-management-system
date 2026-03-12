@@ -47,6 +47,12 @@ export class ApiService {
 
     return this.http.post(`${this.baseUrl}/employee-list`, {}, { params });
   }
+  
+  getProfileImageUrl(path: string | null): string {
+    if (!path) return '';
+    const base = environment.apiUrl.replace('/api', '/wms');
+    return `${base}${path}`;
+  }
 
   getEmployeeById(id: number | string): Observable<any> {
     const params = new HttpParams().set('id', id.toString());
@@ -60,4 +66,12 @@ export class ApiService {
   getDesignations(): Observable<any> {
     return this.http.get(`${this.baseUrl}/designation-list`);
   }
+
+  getAttendanceReport(startDate: string, endDate: string): Observable<any> {
+    return this.http.post(
+      `${this.baseUrl}/report?startDate=${startDate}&endDate=${endDate}`,
+      {}
+    );
+  }
+
 }

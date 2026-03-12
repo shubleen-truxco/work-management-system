@@ -40,7 +40,7 @@
               <th>Name</th>
               <th>Email</th>
               <th>Mobile</th>
-              <th>Role</th>
+              <!-- <th>Role</th> -->
               <th>Designation</th>
               <th>Status</th>
               <th>Actions</th>
@@ -55,11 +55,13 @@
             </tr>
             <tr *ngFor="let emp of filteredEmployees">
               <td>
-                <span class="emp-id" *ngIf="emp.empId; else noEmpId">{{ emp.empId }}</span>
-                <ng-template #noEmpId><span class="text-muted">—</span></ng-template>
+                <span class="emp-id" *ngIf="emp.empId; else noId">{{ emp.empId }}</span>
+                <ng-template #noId><span class="text-muted">—</span></ng-template>
               </td>
               <td class="name-cell">
-                <div class="avatar-mini">{{ getInitial(emp) }}</div>
+                <div class="avatar-mini" *ngIf="!hasProfile(emp)">{{ getInitial(emp) }}</div>
+                <img *ngIf="hasProfile(emp)" [src]="getProfileUrl(emp)" class="avatar-mini-img"
+                  [alt]="getDisplayName(emp)" (error)="emp.profile = null" />
                 <span>{{ getDisplayName(emp) }}</span>
               </td>
               <td>{{ emp.emailId || '—' }}</td>
@@ -68,11 +70,6 @@
                   {{ emp.countryCode }} {{ emp.mobileNumber }}
                 </span>
                 <ng-template #noPhone><span class="text-muted">—</span></ng-template>
-              </td>
-              <td>
-                <span class="role-badge" [class.role-admin]="emp.role === 'ADMIN'">
-                  {{ emp.role || '—' }}
-                </span>
               </td>
               <td>{{ emp.designationName || '—' }}</td>
               <td>
@@ -169,7 +166,7 @@
             <span class="material-icons input-icon">public</span>
             <select class="form-select country-select" [(ngModel)]="form.countryCode" (change)="onCountryChange()">
               <option *ngFor="let c of countryCodes" [value]="c.code">
-                {{ c.flag }} {{ c.code }} 
+                {{ c.flag }} {{ c.code }}
               </option>
             </select>
           </div>
@@ -306,7 +303,7 @@
         <span class="material-icons modal-title-icon">badge</span>
         <div>
           <p class="modal-label">EMPLOYEE PROFILE</p>
-          <h2 class="modal-title">Full Details</h2>
+          <h2 class="modal-title">{{ getDisplayName(viewEmp) }}</h2>
         </div>
       </div>
       <button class="modal-close" (click)="closeViewModal()">
@@ -318,7 +315,14 @@
 
       <!-- Profile Banner -->
       <div class="view-banner">
-        <div class="view-avatar">{{ getInitial(viewEmp) }}</div>
+        <!-- <div class="view-avatar">{{ getInitial(viewEmp) }}</div> -->
+        <div class="view-avatar" *ngIf="!hasProfile(viewEmp)">
+          {{ getInitial(viewEmp) }}
+        </div>
+        <div class="view-avatar-img-wrap" *ngIf="hasProfile(viewEmp)">
+          <img [src]="getProfileUrl(viewEmp)" class="view-avatar-img" [alt]="getDisplayName(viewEmp)"
+            (error)="viewEmp.profile = null" />
+        </div>
         <div class="view-banner-info">
           <h3 class="view-name">{{ getDisplayName(viewEmp) }}</h3>
           <span class="view-role-badge" [class.role-admin]="viewEmp.role === 'ADMIN'">
@@ -335,148 +339,164 @@
         </div>
       </div>
 
-      <div class="view-sections">
-
-        <!-- Personal -->
-        <div class="view-section">
-          <div class="view-section-title">
-            <span class="material-icons">person</span>Personal Information
-          </div>
-          <div class="view-grid">
-            <div class="view-item">
-              <span class="view-label">First Name</span>
-              <span class="view-value">{{ viewEmp.firstName || '—' }}</span>
-            </div>
-            <div class="view-item">
-              <span class="view-label">Last Name</span>
-              <span class="view-value">{{ viewEmp.lastName || '—' }}</span>
-            </div>
-            <div class="view-item">
-              <span class="view-label">Full Name</span>
-              <span class="view-value">{{ viewEmp.name || getDisplayName(viewEmp) }}</span>
-            </div>
-            <div class="view-item">
-              <span class="view-label">Username</span>
-              <span class="view-value">{{ viewEmp.username || '—' }}</span>
-            </div>
-          </div>
-        </div>
-
-        <!-- Contact -->
-        <div class="view-section">
-          <div class="view-section-title">
-            <span class="material-icons">contacts</span>Contact Information
-          </div>
-          <div class="view-grid">
-            <div class="view-item full-width">
-              <span class="view-label">Email Address</span>
-              <span class="view-value">
-                <span class="material-icons view-inline-icon">email</span>
-                {{ viewEmp.emailId || '—' }}
-              </span>
-            </div>
-            <div class="view-item">
-              <span class="view-label">Phone Number</span>
-              <span class="view-value">
-                <span class="material-icons view-inline-icon">phone</span>
-                {{ viewEmp.mobileNumber ? (viewEmp.countryCode + ' ' + viewEmp.mobileNumber) : '—' }}
-              </span>
-            </div>
-            <div class="view-item">
-              <span class="view-label">Location</span>
-              <span class="view-value">
-                <span class="material-icons view-inline-icon">location_on</span>
-                {{ viewEmp.location || '—' }}
-              </span>
-            </div>
-          </div>
-        </div>
-
-        <!-- Work -->
-        <div class="view-section">
-          <div class="view-section-title">
-            <span class="material-icons">work</span>Work Information
-          </div>
-          <div class="view-grid">
-            <div class="view-item">
-              <span class="view-label">Designation</span>
-              <span class="view-value">{{ viewEmp.designationName || '—' }}</span>
-            </div>
-            <div class="view-item">
-              <span class="view-label">Role</span>
-              <span class="view-value">{{ viewEmp.role || '—' }}</span>
-            </div>
-            <div class="view-item">
-              <span class="view-label">Time In</span>
-              <span class="view-value">
-                <span class="material-icons view-inline-icon">schedule</span>
-                {{ viewEmp.timeIn || '—' }}
-              </span>
-            </div>
-            <div class="view-item">
-              <span class="view-label">Break Time</span>
-              <span class="view-value">
-                <span class="material-icons view-inline-icon">free_breakfast</span>
-                {{ viewEmp.breakTime || '—' }}
-              </span>
-            </div>
-          </div>
-        </div>
-
-        <!-- Device -->
-        <div class="view-section">
-          <div class="view-section-title">
-            <span class="material-icons">devices</span>Device Information
-          </div>
-          <div class="view-grid">
-            <div class="view-item">
-              <span class="view-label">Device Type</span>
-              <span class="view-value">{{ viewEmp.deviceType || '—' }}</span>
-            </div>
-            <div class="view-item">
-              <span class="view-label">Device ID</span>
-              <span class="view-value view-mono">{{ viewEmp.deviceId || '—' }}</span>
-            </div>
-            <div class="view-item full-width">
-              <span class="view-label">Last Login</span>
-              <span class="view-value">
-                <span class="material-icons view-inline-icon">login</span>
-                {{ viewEmp.lastLoginAt ? (viewEmp.lastLoginAt | date:'dd MMM yyyy, hh:mm a') : '—' }}
-              </span>
-            </div>
-          </div>
-        </div>
-
-        <!-- GPS -->
-        <div class="view-section" *ngIf="viewEmp.currentLocationLat">
-          <div class="view-section-title">
-            <span class="material-icons">my_location</span>GPS Coordinates
-          </div>
-          <div class="view-grid">
-            <div class="view-item">
-              <span class="view-label">Latitude</span>
-              <span class="view-value view-mono">{{ viewEmp.currentLocationLat || '—' }}</span>
-            </div>
-            <div class="view-item">
-              <span class="view-label">Longitude</span>
-              <span class="view-value view-mono">{{ viewEmp.currentLocationLon || '—' }}</span>
-            </div>
-          </div>
-        </div>
-
+      <!-- Tabs -->
+      <div class="view-tabs">
+        <button class="view-tab-btn" [class.active]="activeViewTab === 'profile'" (click)="setViewTab('profile')">
+          <span class="material-icons">person</span> Profile
+        </button>
+        <button class="view-tab-btn" [class.active]="activeViewTab === 'attendance'" (click)="setViewTab('attendance')">
+          <span class="material-icons">fact_check</span>
+          Attendance
+          <span class="tab-count" *ngIf="viewEmp.attendance?.length">
+            {{ viewEmp.attendance.length }}
+          </span>
+        </button>
       </div>
-    </div>
 
-    <div class="modal-footer">
-      <button type="button" class="modal-btn cancel" (click)="closeViewModal()">
-        <span class="material-icons">close</span>
-        Close
-      </button>
-      <!-- <button type="button" class="modal-btn submit" (click)="closeViewModal(); openEditModal(viewEmp)">
+      <!-- ── PROFILE TAB ── -->
+      <div class="view-tab-content" *ngIf="activeViewTab === 'profile'">
+        <div class="view-sections">
+
+          <!-- Personal -->
+          <div class="view-section">
+            <div class="view-section-title">
+              <span class="material-icons">person</span>Personal Information
+            </div>
+            <div class="view-grid">
+              <div class="view-item">
+                <span class="view-label">First Name</span>
+                <span class="view-value">{{ viewEmp.firstName || '—' }}</span>
+              </div>
+              <div class="view-item">
+                <span class="view-label">Last Name</span>
+                <span class="view-value">{{ viewEmp.lastName || '—' }}</span>
+              </div>
+              <div class="view-item">
+                <span class="view-label">Username</span>
+                <span class="view-value">{{ viewEmp.username || '—' }}</span>
+              </div>
+              <div class="view-item">
+                <span class="view-label">Employee ID</span>
+                <span class="view-value">{{ viewEmp.empId || '—' }}</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Contact -->
+          <div class="view-section">
+            <div class="view-section-title">
+              <span class="material-icons">contacts</span>Contact Information
+            </div>
+            <div class="view-grid">
+              <div class="view-item full-width">
+                <span class="view-label">Email Address</span>
+                <span class="view-value">
+                  <span class="material-icons view-inline-icon">email</span>
+                  {{ viewEmp.emailId || '—' }}
+                </span>
+              </div>
+              <div class="view-item">
+                <span class="view-label">Phone Number</span>
+                <span class="view-value">
+                  <span class="material-icons view-inline-icon">phone</span>
+                  {{ viewEmp.mobileNumber ? (viewEmp.countryCode + ' ' + viewEmp.mobileNumber) : '—' }}
+                </span>
+              </div>
+              <div class="view-item">
+                <span class="view-label">Location</span>
+                <span class="view-value">
+                  <span class="material-icons view-inline-icon">location_on</span>
+                  {{ viewEmp.location || '—' }}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Work -->
+          <div class="view-section">
+            <div class="view-section-title">
+              <span class="material-icons">work</span>Work Information
+            </div>
+            <div class="view-grid">
+              <div class="view-item">
+                <span class="view-label">Designation</span>
+                <span class="view-value">{{ viewEmp.designationName || '—' }}</span>
+              </div>
+              <div class="view-item">
+                <span class="view-label">Role</span>
+                <span class="view-value">{{ viewEmp.role || '—' }}</span>
+              </div>
+              <div class="view-item">
+                <span class="view-label">Time In</span>
+                <span class="view-value">
+                  <span class="material-icons view-inline-icon">schedule</span>
+                  {{ viewEmp.timeIn || '—' }}
+                </span>
+              </div>
+              <div class="view-item">
+                <span class="view-label">Break Time</span>
+                <span class="view-value">
+                  <span class="material-icons view-inline-icon">free_breakfast</span>
+                  {{ viewEmp.breakTime || '—' }}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Device -->
+          <div class="view-section">
+            <div class="view-section-title">
+              <span class="material-icons">devices</span>Device Information
+            </div>
+            <div class="view-grid">
+              <div class="view-item">
+                <span class="view-label">Device Type</span>
+                <span class="view-value">{{ viewEmp.deviceType || '—' }}</span>
+              </div>
+              <div class="view-item">
+                <span class="view-label">Device ID</span>
+                <span class="view-value view-mono">{{ viewEmp.deviceId || '—' }}</span>
+              </div>
+              <div class="view-item full-width">
+                <span class="view-label">Last Login</span>
+                <span class="view-value">
+                  <span class="material-icons view-inline-icon">login</span>
+                  {{ viewEmp.lastLoginAt ? (viewEmp.lastLoginAt | date:'dd MMM yyyy, hh:mm a') : '—' }}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <!-- GPS -->
+          <div class="view-section" *ngIf="viewEmp.currentLocationLat">
+            <div class="view-section-title">
+              <span class="material-icons">my_location</span>GPS Coordinates
+            </div>
+            <div class="view-grid">
+              <div class="view-item">
+                <span class="view-label">Latitude</span>
+                <span class="view-value view-mono">{{ viewEmp.currentLocationLat || '—' }}</span>
+              </div>
+              <div class="view-item">
+                <span class="view-label">Longitude</span>
+                <span class="view-value view-mono">{{ viewEmp.currentLocationLon || '—' }}</span>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="modal-btn cancel" (click)="closeViewModal()">
+          <span class="material-icons">close</span>
+          Close
+        </button>
+        <!-- <button type="button" class="modal-btn submit" (click)="closeViewModal(); openEditModal(viewEmp)">
         <span class="material-icons">edit</span>
         Edit Employee
       </button> -->
-    </div>
+      </div>
 
+    </div>
   </div>
-</div>
