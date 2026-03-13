@@ -47,7 +47,7 @@ export class ApiService {
 
     return this.http.post(`${this.baseUrl}/employee-list`, {}, { params });
   }
-  
+
   getProfileImageUrl(path: string | null): string {
     if (!path) return '';
     const base = environment.apiUrl.replace('/api', '/wms');
@@ -72,6 +72,18 @@ export class ApiService {
       `${this.baseUrl}/report?startDate=${startDate}&endDate=${endDate}`,
       {}
     );
+  }
+
+  createOrUpdateTask(payload: any): Observable<any> {
+    return this.http.post(`${this.baseUrl}/create-update-task`, payload);
+  }
+
+  getTaskList(payload: any): Observable<any> {
+    return this.http.post(`${this.baseUrl}/task-list`,payload);
+  }
+
+  getTaskById(payload: any): Observable<any> {
+    return this.http.post(`${this.baseUrl}/task-details`,payload);
   }
 
 }
