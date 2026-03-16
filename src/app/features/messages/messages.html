@@ -3,10 +3,10 @@
 
   <div class="messages-panel">
 
-    <!-- Chat List Sidebar -->
+    <!-- ══════ CHAT LIST SIDEBAR ══════ -->
     <aside class="chat-list-sidebar">
 
-      <!-- Sidebar Header -->
+      <!-- Header -->
       <div class="chat-list-header">
         <div>
           <p class="page-label">INBOX</p>
@@ -28,39 +28,67 @@
 
       <!-- Filter Tabs -->
       <div class="chat-filter-tabs">
-        <button class="filter-tab" [class.active]="activeFilter === 'all'"
+        <button class="filter-tab"
+          [class.active]="activeFilter === 'all'"
           (click)="setFilter('all')">All</button>
-        <button class="filter-tab" [class.active]="activeFilter === 'unread'"
+        <button class="filter-tab"
+          [class.active]="activeFilter === 'unread'"
           (click)="setFilter('unread')">
           Unread
-          <span class="unread-count-badge" *ngIf="unreadCount > 0">{{ unreadCount }}</span>
+          <span class="unread-count-badge" *ngIf="unreadCount > 0">
+            {{ unreadCount }}
+          </span>
         </button>
-        <button class="filter-tab" [class.active]="activeFilter === 'groups'"
+        <button class="filter-tab"
+          [class.active]="activeFilter === 'groups'"
           (click)="setFilter('groups')">Groups</button>
       </div>
 
       <!-- Chat List -->
       <div class="chat-list">
 
-        <!-- Empty -->
-        <div class="chat-list-empty" *ngIf="filteredChats.length === 0">
-          <span class="material-icons">forum</span>
-          <p>No conversations found</p>
+        <!-- Loading -->
+        <div class="chat-list-loading" *ngIf="isLoadingChats">
+          <span class="material-icons spin">sync</span>
+          <span>Loading chats...</span>
         </div>
 
+        <!-- Empty -->
+        <div class="chat-list-empty"
+          *ngIf="!isLoadingChats && filteredChats.length === 0">
+          <span class="material-icons">forum</span>
+          <p>No conversations found</p>
+          <button class="btn-new-chat-empty" (click)="openNewChatModal()">
+            Start a conversation
+          </button>
+        </div>
+
+        <!-- Chat Items -->
         <div class="chat-list-item"
           *ngFor="let chat of filteredChats"
-          [class.active]="selectedChat?.id === chat.id"
+          [class.active]="selectedChat?.chatId === chat.chatId"
           [class.unread]="chat.unreadCount > 0"
           (click)="selectChat(chat)">
 
           <!-- Avatar -->
           <div class="chat-avatar-wrap">
-            <div class="chat-avatar" [class.group-avatar]="chat.isGroup">
-              <span class="material-icons" *ngIf="chat.isGroup">group</span>
-              <span *ngIf="!chat.isGroup">{{ chat.name.charAt(0) }}</span>
+            <!-- Group with image avatar -->
+            <div class="chat-avatar group-avatar-img"
+              *ngIf="chat.isGroup && chat.avatar"
+              [style.background-image]="'url(' + chat.avatar + ')'">
             </div>
-            <span class="online-dot" *ngIf="chat.online && !chat.isGroup"></span>
+            <!-- Group without image -->
+            <div class="chat-avatar group-avatar"
+              *ngIf="chat.isGroup && !chat.avatar">
+              <span class="material-icons">group</span>
+            </div>
+            <!-- Individual -->
+            <div class="chat-avatar"
+              *ngIf="!chat.isGroup">
+              {{ chat.name.charAt(0).toUpperCase() }}
+            </div>
+            <span class="online-dot"
+              *ngIf="chat.online && !chat.isGroup"></span>
           </div>
 
           <!-- Info -->
@@ -71,21 +99,33 @@
             </div>
             <div class="chat-item-bottom">
               <span class="chat-item-preview">
-                <span class="preview-sender" *ngIf="chat.isGroup && chat.lastSender">
+                <span class="preview-sender"
+                  *ngIf="chat.isGroup && chat.lastSender">
                   {{ chat.lastSender }}:
                 </span>
-                {{ chat.lastMessage }}
+                <!-- Typing indicator in list -->
+                <span class="preview-typing"
+                  *ngIf="chat.isTyping; else previewText">
+                  <span class="typing-dots-sm">
+                    <span></span><span></span><span></span>
+                  </span>
+                  typing...
+                </span>
+                <ng-template #previewText>
+                  {{ chat.lastMessage || 'No messages yet' }}
+                </ng-template>
               </span>
               <span class="unread-badge" *ngIf="chat.unreadCount > 0">
-                {{ chat.unreadCount }}
+                {{ chat.unreadCount > 99 ? '99+' : chat.unreadCount }}
               </span>
             </div>
           </div>
         </div>
+
       </div>
     </aside>
 
-    <!-- Chat Window -->
+    <!-- ══════ CHAT WINDOW ══════ -->
     <div class="chat-window" [class.empty]="!selectedChat">
 
       <!-- No chat selected -->
@@ -106,29 +146,48 @@
 
         <!-- Chat Header -->
         <div class="chat-header">
-          <div class="chat-header-left">
+          <div class="chat-header-left"
+            [class.clickable]="selectedChat.isGroup"
+            (click)="selectedChat.isGroup ? openGroupInfoModal() : null">
+
+            <!-- Avatar -->
             <div class="chat-avatar-wrap">
-              <div class="chat-avatar md" [class.group-avatar]="selectedChat.isGroup">
-                <span class="material-icons" *ngIf="selectedChat.isGroup">group</span>
-                <span *ngIf="!selectedChat.isGroup">{{ selectedChat.name.charAt(0) }}</span>
+              <!-- Group image avatar -->
+              <div class="chat-avatar md group-avatar-img"
+                *ngIf="selectedChat.isGroup && selectedChat.avatar"
+                [style.background-image]="'url(' + selectedChat.avatar + ')'">
               </div>
-              <span class="online-dot" *ngIf="selectedChat.online && !selectedChat.isGroup"></span>
+              <!-- Group no image -->
+              <div class="chat-avatar md group-avatar"
+                *ngIf="selectedChat.isGroup && !selectedChat.avatar">
+                <span class="material-icons">group</span>
+              </div>
+              <!-- Individual -->
+              <div class="chat-avatar md"
+                *ngIf="!selectedChat.isGroup">
+                {{ selectedChat.name.charAt(0).toUpperCase() }}
+              </div>
+              <span class="online-dot"
+                *ngIf="selectedChat.online && !selectedChat.isGroup"></span>
             </div>
+
             <div>
               <p class="chat-header-name">{{ selectedChat.name }}</p>
               <p class="chat-header-status">
                 <span *ngIf="selectedChat.isGroup">
                   {{ selectedChat.members }} members
+                  <span class="header-edit-hint">· tap to edit</span>
                 </span>
-                <span *ngIf="!selectedChat.isGroup && selectedChat.online" class="status-online">
-                  Online
-                </span>
-                <span *ngIf="!selectedChat.isGroup && !selectedChat.online" class="status-offline">
-                  {{ selectedChat.lastSeen }}
+                <span *ngIf="!selectedChat.isGroup && selectedChat.online"
+                  class="status-online">● Online</span>
+                <span *ngIf="!selectedChat.isGroup && !selectedChat.online"
+                  class="status-offline">
+                  {{ selectedChat.lastSeen || 'Offline' }}
                 </span>
               </p>
             </div>
           </div>
+
           <div class="chat-header-actions">
             <button class="header-action-btn" title="Search in chat">
               <span class="material-icons">search</span>
@@ -139,6 +198,12 @@
             <button class="header-action-btn" title="Video call">
               <span class="material-icons">videocam</span>
             </button>
+            <button class="header-action-btn"
+              *ngIf="selectedChat.isGroup"
+              title="Group info"
+              (click)="openGroupInfoModal()">
+              <span class="material-icons">info</span>
+            </button>
             <button class="header-action-btn" title="More options">
               <span class="material-icons">more_vert</span>
             </button>
@@ -148,63 +213,144 @@
         <!-- Messages Area -->
         <div class="messages-area" #messagesArea>
 
-          <!-- Date divider -->
-          <div class="date-divider">
+          <!-- Loading history -->
+          <div class="messages-loading" *ngIf="isLoadingHistory">
+            <span class="material-icons spin">sync</span>
+            <span>Loading messages...</span>
+          </div>
+
+          <!-- Date divider — Today -->
+          <div class="date-divider" *ngIf="!isLoadingHistory">
             <span>Today</span>
           </div>
 
-          <ng-container *ngFor="let msg of selectedChat.messages">
+          <ng-container *ngIf="!isLoadingHistory">
+            <ng-container *ngFor="let msg of selectedChat.messages">
 
-            <!-- Date divider between days -->
-            <div class="date-divider" *ngIf="msg.dateDivider">
-              <span>{{ msg.dateDivider }}</span>
-            </div>
-
-            <!-- Received message -->
-            <div class="message-row received" *ngIf="!msg.isOwn">
-              <div class="msg-avatar">{{ msg.sender.charAt(0) }}</div>
-              <div class="message-bubble-wrap">
-                <span class="msg-sender-name" *ngIf="selectedChat.isGroup">
-                  {{ msg.sender }}
-                </span>
-                <div class="message-bubble received">
-                  <p class="msg-text">{{ msg.text }}</p>
-                  <!-- Attachment -->
-                  <div class="msg-attachment" *ngIf="msg.attachment">
-                    <span class="material-icons">attach_file</span>
-                    <span>{{ msg.attachment }}</span>
-                  </div>
-                </div>
-                <span class="msg-time">{{ msg.time }}</span>
+              <!-- Date divider -->
+              <div class="date-divider" *ngIf="msg.dateDivider">
+                <span>{{ msg.dateDivider }}</span>
               </div>
-            </div>
 
-            <!-- Sent message -->
-            <div class="message-row sent" *ngIf="msg.isOwn">
-              <div class="message-bubble-wrap">
-                <div class="message-bubble sent">
-                  <p class="msg-text">{{ msg.text }}</p>
-                  <div class="msg-attachment" *ngIf="msg.attachment">
-                    <span class="material-icons">attach_file</span>
-                    <span>{{ msg.attachment }}</span>
-                  </div>
+              <!-- ── SYSTEM MESSAGE ── -->
+              <div class="system-message-row" *ngIf="msg.type === 'system'">
+                <span class="system-message-text">{{ msg.text }}</span>
+              </div>
+
+              <!-- ── RECEIVED MESSAGE ── -->
+              <div class="message-row received"
+                *ngIf="!msg.isOwn && msg.type !== 'system'">
+                <div class="msg-avatar">
+                  {{ (msg.sender || '?').charAt(0).toUpperCase() }}
                 </div>
-                <div class="msg-meta">
-                  <span class="msg-time">{{ msg.time }}</span>
-                  <span class="material-icons msg-status">
-                    {{ msg.read ? 'done_all' : 'done' }}
+                <div class="message-bubble-wrap">
+                  <span class="msg-sender-name"
+                    *ngIf="selectedChat.isGroup && msg.sender">
+                    {{ msg.sender }}
+                  </span>
+
+                  <!-- Image message -->
+                  <div class="message-bubble received image-bubble"
+                    *ngIf="isImageMessage(msg)">
+                    <div class="msg-image-placeholder">
+                      <span class="material-icons">image</span>
+                      <span>{{ msg.text }}</span>
+                    </div>
+                    <span class="msg-time bubble-time">{{ msg.time }}</span>
+                  </div>
+
+                  <!-- File message -->
+                  <div class="message-bubble received file-bubble"
+                    *ngIf="isFileMessage(msg)">
+                    <div class="msg-file">
+                      <span class="material-icons file-icon">description</span>
+                      <span class="file-name">{{ msg.text }}</span>
+                    </div>
+                    <span class="msg-time bubble-time">{{ msg.time }}</span>
+                  </div>
+
+                  <!-- Text message -->
+                  <div class="message-bubble received"
+                    *ngIf="!isImageMessage(msg) && !isFileMessage(msg)">
+                    <p class="msg-text">{{ msg.text }}</p>
+                  </div>
+
+                  <span class="msg-time"
+                    *ngIf="!isImageMessage(msg) && !isFileMessage(msg)">
+                    {{ msg.time }}
                   </span>
                 </div>
               </div>
-            </div>
 
+              <!-- ── SENT MESSAGE ── -->
+              <div class="message-row sent"
+                *ngIf="msg.isOwn && msg.type !== 'system'">
+                <div class="message-bubble-wrap">
+
+                  <!-- Image -->
+                  <div class="message-bubble sent image-bubble"
+                    *ngIf="isImageMessage(msg)">
+                    <div class="msg-image-placeholder">
+                      <span class="material-icons">image</span>
+                      <span>{{ msg.text }}</span>
+                    </div>
+                    <div class="msg-meta">
+                      <span class="msg-time">{{ msg.time }}</span>
+                      <span class="material-icons msg-status">
+                        {{ msg.status === 'seen' ? 'done_all' : 'done' }}
+                      </span>
+                    </div>
+                  </div>
+
+                  <!-- File -->
+                  <div class="message-bubble sent file-bubble"
+                    *ngIf="isFileMessage(msg)">
+                    <div class="msg-file">
+                      <span class="material-icons file-icon">description</span>
+                      <span class="file-name">{{ msg.text }}</span>
+                    </div>
+                    <div class="msg-meta">
+                      <span class="msg-time">{{ msg.time }}</span>
+                      <span class="material-icons msg-status">
+                        {{ msg.status === 'seen' ? 'done_all' : 'done' }}
+                      </span>
+                    </div>
+                  </div>
+
+                  <!-- Text -->
+                  <div class="message-bubble sent"
+                    *ngIf="!isImageMessage(msg) && !isFileMessage(msg)">
+                    <p class="msg-text">{{ msg.text }}</p>
+                  </div>
+
+                  <div class="msg-meta"
+                    *ngIf="!isImageMessage(msg) && !isFileMessage(msg)">
+                    <span class="msg-time">{{ msg.time }}</span>
+                    <span class="material-icons msg-status">
+                      {{ msg.status === 'seen' ? 'done_all' : 'done' }}
+                    </span>
+                  </div>
+
+                </div>
+              </div>
+
+            </ng-container>
           </ng-container>
 
-          <!-- Typing indicator -->
-          <div class="message-row received" *ngIf="isTyping">
-            <div class="msg-avatar">{{ selectedChat.name.charAt(0) }}</div>
-            <div class="typing-bubble">
-              <span></span><span></span><span></span>
+          <!-- Typing Indicator -->
+          <div class="message-row received"
+            *ngIf="isTyping && selectedChat && !isLoadingHistory">
+            <div class="msg-avatar">
+              {{ selectedChat.name.charAt(0).toUpperCase() }}
+            </div>
+            <div class="message-bubble-wrap">
+              <span class="msg-sender-name"
+                *ngIf="selectedChat.isGroup && typingPerson">
+                {{ typingPerson }}
+              </span>
+              <div class="typing-bubble">
+                <span></span><span></span><span></span>
+              </div>
             </div>
           </div>
 
@@ -212,23 +358,47 @@
 
         <!-- Message Input -->
         <div class="message-input-area">
+
+          <!-- Hidden file inputs -->
+          <input #fileInput type="file" hidden
+            accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt,.zip"
+            (change)="onFileSelected($event)" />
+
+          <input #avatarInput type="file" hidden
+            accept="image/*"
+            (change)="onAvatarSelected($event)" />
+
           <div class="input-toolbar">
-            <button class="toolbar-btn" title="Attach file">
-              <span class="material-icons">attach_file</span>
+            <button class="toolbar-btn" title="Attach file"
+              (click)="triggerFileUpload()"
+              [disabled]="isUploadingFile">
+              <span class="material-icons">
+                {{ isUploadingFile ? 'hourglass_top' : 'attach_file' }}
+              </span>
             </button>
             <button class="toolbar-btn" title="Emoji">
               <span class="material-icons">emoji_emotions</span>
             </button>
           </div>
-          <div class="message-input-wrap">
+
+          <!-- Upload progress -->
+          <div class="upload-progress" *ngIf="isUploadingFile">
+            <span class="material-icons spin">sync</span>
+            <span>Uploading file...</span>
+          </div>
+
+          <div class="message-input-wrap" *ngIf="!isUploadingFile">
             <input type="text" class="message-input"
               placeholder="Type a message..."
               [(ngModel)]="newMessage"
               (keyup.enter)="sendMessage()"
               (input)="onTyping()" />
           </div>
-          <button class="send-btn" (click)="sendMessage()"
-            [class.active]="newMessage.trim()">
+
+          <button class="send-btn"
+            (click)="sendMessage()"
+            [class.active]="newMessage.trim()"
+            [disabled]="!newMessage.trim() || isUploadingFile">
             <span class="material-icons">send</span>
           </button>
         </div>
@@ -239,7 +409,8 @@
 </div>
 
 <!-- ══════ NEW CHAT MODAL ══════ -->
-<div class="modal-overlay" *ngIf="showNewChatModal" (click)="closeNewChatModal()">
+<div class="modal-overlay" *ngIf="showNewChatModal"
+  (click)="closeNewChatModal()">
   <div class="modal new-chat-modal" (click)="$event.stopPropagation()">
 
     <div class="modal-header">
@@ -257,24 +428,27 @@
 
     <div class="modal-body">
 
-      <!-- Chat type -->
+      <!-- Chat type toggle -->
       <div class="chat-type-toggle">
-        <button class="type-btn" [class.active]="newChatType === 'direct'"
+        <button class="type-btn"
+          [class.active]="newChatType === 'direct'"
           (click)="newChatType = 'direct'">
           <span class="material-icons">person</span> Direct
         </button>
-        <button class="type-btn" [class.active]="newChatType === 'group'"
+        <button class="type-btn"
+          [class.active]="newChatType === 'group'"
           (click)="newChatType = 'group'">
           <span class="material-icons">group</span> Group
         </button>
       </div>
 
-      <!-- Group name (if group) -->
+      <!-- Group name -->
       <div class="form-group" *ngIf="newChatType === 'group'">
-        <label class="form-label">Group Name</label>
+        <label class="form-label">Group Name <span class="required">*</span></label>
         <div class="input-wrap">
           <span class="material-icons input-icon">group</span>
-          <input class="form-input" type="text" placeholder="Enter group name"
+          <input class="form-input" type="text"
+            placeholder="Enter group name"
             [(ngModel)]="newGroupName" />
         </div>
       </div>
@@ -286,45 +460,170 @@
         </label>
         <div class="input-wrap">
           <span class="material-icons input-icon">search</span>
-          <input class="form-input" type="text" placeholder="Search employees..."
+          <input class="form-input" type="text"
+            placeholder="Search employees..."
             [(ngModel)]="searchPeople" />
         </div>
       </div>
 
+      <!-- Loading people -->
+      <div class="people-loading" *ngIf="isLoadingPeople">
+        <span class="material-icons spin">sync</span>
+        <span>Loading employees...</span>
+      </div>
+
       <!-- People List -->
-      <div class="people-list">
+      <div class="people-list" *ngIf="!isLoadingPeople">
+        <div class="people-empty" *ngIf="filteredPeople.length === 0">
+          <span class="material-icons">person_off</span>
+          <p>No employees found</p>
+        </div>
         <div class="people-item"
           *ngFor="let p of filteredPeople"
           [class.selected]="isSelected(p)"
           (click)="togglePerson(p)">
-          <div class="people-avatar">{{ p.name.charAt(0) }}</div>
+          <div class="people-avatar">
+            {{ p.name.charAt(0).toUpperCase() }}
+          </div>
           <div class="people-info">
             <span class="people-name">{{ p.name }}</span>
-            <span class="people-role">{{ p.role }}</span>
+            <span class="people-role">{{ p.role || 'Employee' }}</span>
           </div>
-          <span class="material-icons people-check" *ngIf="isSelected(p)">check_circle</span>
+          <span class="material-icons people-check"
+            *ngIf="isSelected(p)">check_circle</span>
         </div>
       </div>
 
       <!-- Selected chips (group) -->
-      <div class="selected-chips" *ngIf="selectedPeople.length > 0 && newChatType === 'group'">
+      <div class="selected-chips"
+        *ngIf="selectedPeople.length > 0 && newChatType === 'group'">
         <div class="chip" *ngFor="let p of selectedPeople">
           {{ p.name }}
-          <span class="material-icons chip-remove" (click)="togglePerson(p)">close</span>
+          <span class="material-icons chip-remove"
+            (click)="togglePerson(p)">close</span>
         </div>
       </div>
 
     </div>
 
     <div class="modal-footer">
-      <button type="button" class="modal-btn cancel" (click)="closeNewChatModal()">
+      <button type="button" class="modal-btn cancel"
+        (click)="closeNewChatModal()">
         <span class="material-icons">close</span> Cancel
       </button>
       <button type="button" class="modal-btn submit"
         (click)="createChat()"
-        [disabled]="selectedPeople.length === 0">
-        <span class="material-icons">chat</span>
-        {{ newChatType === 'group' ? 'Create Group' : 'Start Chat' }}
+        [disabled]="selectedPeople.length === 0 || isCreatingChat">
+        <span class="material-icons">
+          {{ isCreatingChat ? 'hourglass_top' : 'chat' }}
+        </span>
+        {{ isCreatingChat ? 'Creating...' :
+           (newChatType === 'group' ? 'Create Group' : 'Start Chat') }}
+      </button>
+    </div>
+
+  </div>
+</div>
+
+<!-- ══════ GROUP INFO MODAL ══════ -->
+<div class="modal-overlay" *ngIf="showGroupInfoModal"
+  (click)="closeGroupInfoModal()">
+  <div class="modal group-info-modal" (click)="$event.stopPropagation()">
+
+    <div class="modal-header">
+      <div class="modal-title-wrap">
+        <span class="material-icons modal-title-icon">group</span>
+        <div>
+          <p class="modal-label">GROUP INFO</p>
+          <h2 class="modal-title">{{ selectedChat?.name }}</h2>
+        </div>
+      </div>
+      <button class="modal-close" (click)="closeGroupInfoModal()">
+        <span class="material-icons">close</span>
+      </button>
+    </div>
+
+    <div class="modal-body" *ngIf="selectedChat">
+
+      <!-- Group Avatar -->
+      <div class="group-avatar-section">
+        <div class="group-avatar-preview"
+          [class.has-image]="selectedChat.avatar"
+          [style.background-image]="selectedChat.avatar
+            ? 'url(' + selectedChat.avatar + ')' : 'none'">
+          <span class="material-icons"
+            *ngIf="!selectedChat.avatar">group</span>
+        </div>
+        <button class="change-avatar-btn"
+          (click)="triggerAvatarUpload()"
+          [disabled]="isUploadingAvatar">
+          <span class="material-icons">
+            {{ isUploadingAvatar ? 'hourglass_top' : 'photo_camera' }}
+          </span>
+          {{ isUploadingAvatar ? 'Uploading...' : 'Change Avatar' }}
+        </button>
+        <p class="avatar-hint">JPG, PNG up to 5MB</p>
+      </div>
+
+      <!-- Group Name -->
+      <div class="form-group">
+        <label class="form-label">Group Name</label>
+        <div class="input-wrap">
+          <span class="material-icons input-icon">edit</span>
+          <input class="form-input" type="text"
+            [(ngModel)]="editGroupName"
+            placeholder="Enter group name" />
+        </div>
+      </div>
+
+      <!-- Members -->
+      <div class="view-section">
+        <div class="view-section-title">
+          <span class="material-icons">people</span>
+          Members
+          <span class="member-count-badge">
+            {{ selectedChat.members || selectedChat.participants?.length || 0 }}
+          </span>
+        </div>
+
+        <div class="members-list">
+          <div class="member-item"
+            *ngFor="let p of selectedChat.participants">
+            <div class="member-avatar">
+              {{ (p.name || '?').charAt(0).toUpperCase() }}
+            </div>
+            <div class="member-info">
+              <span class="member-name">{{ p.name }}</span>
+              <span class="member-role">
+                {{ p.role === 'admin' ? '👑 Admin' : (p.role || 'Member') }}
+              </span>
+            </div>
+            <div class="member-status">
+              <span class="online-dot" *ngIf="p.isOnline"></span>
+              <span class="offline-label" *ngIf="!p.isOnline">Offline</span>
+            </div>
+          </div>
+
+          <!-- Empty members -->
+          <div class="members-empty"
+            *ngIf="!selectedChat.participants?.length">
+            <span class="material-icons">group_off</span>
+            <p>No member info available</p>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="modal-footer">
+      <button type="button" class="modal-btn cancel danger"
+        (click)="leaveGroup()">
+        <span class="material-icons">exit_to_app</span> Leave Group
+      </button>
+      <button type="button" class="modal-btn submit"
+        (click)="saveGroupInfo()"
+        [disabled]="!editGroupName.trim()">
+        <span class="material-icons">save</span> Save Changes
       </button>
     </div>
 

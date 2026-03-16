@@ -9,15 +9,16 @@ import { environment } from '../../../environments/environment';
 })
 export class ApiService {
   private readonly baseUrl = environment.apiUrl;
+  private readonly chatV1 = `${environment.apiUrl}/chats`;
 
   constructor(private http: HttpClient) { }
 
+  // ══════════════════════════════════════════════════════
+  // AUTH
+  // ══════════════════════════════════════════════════════
+
   login(payload: any = {}): Observable<any> {
     return this.http.post(`${this.baseUrl}/login`, payload);
-  }
-
-  empLogin(payload: any = {}): Observable<any> {
-    return this.http.post(`${this.baseUrl}/employee-login`, payload);
   }
 
   saveUser(userData: any): Observable<any> {
@@ -27,6 +28,10 @@ export class ApiService {
   logout(): Observable<any> {
     return this.http.post(`${this.baseUrl}/user-logout`, {});
   }
+
+  // ══════════════════════════════════════════════════════
+  // USER / EMPLOYEE
+  // ══════════════════════════════════════════════════════
 
   getMyProfile(): Observable<any> {
     return this.http.post(`${this.baseUrl}/user-profile`, {});
@@ -59,6 +64,10 @@ export class ApiService {
     return this.http.post(`${this.baseUrl}/employee-details`, {}, { params });
   }
 
+  // ══════════════════════════════════════════════════════
+  // DESIGNATION
+  // ══════════════════════════════════════════════════════
+
   addDesignation(payload: any): Observable<any> {
     return this.http.post(`${this.baseUrl}/designation`, payload);
   }
@@ -67,6 +76,11 @@ export class ApiService {
     return this.http.get(`${this.baseUrl}/designation-list`);
   }
 
+
+  // ══════════════════════════════════════════════════════
+  // ATTENDANCE
+  // ══════════════════════════════════════════════════════
+
   getAttendanceReport(startDate: string, endDate: string): Observable<any> {
     return this.http.post(
       `${this.baseUrl}/report?startDate=${startDate}&endDate=${endDate}`,
@@ -74,16 +88,138 @@ export class ApiService {
     );
   }
 
+  // ══════════════════════════════════════════════════════
+  // TASKS
+  // ══════════════════════════════════════════════════════
+
   createOrUpdateTask(payload: any): Observable<any> {
     return this.http.post(`${this.baseUrl}/create-update-task`, payload);
   }
 
   getTaskList(payload: any): Observable<any> {
-    return this.http.post(`${this.baseUrl}/task-list`,payload);
+    return this.http.post(`${this.baseUrl}/task-list`, payload);
   }
 
   getTaskById(payload: any): Observable<any> {
-    return this.http.post(`${this.baseUrl}/task-details`,payload);
+    return this.http.post(`${this.baseUrl}/task-details`, payload);
+  }
+
+  // ══════════════════════════════════════════════════════
+  // MESSAGES / CHAT
+  // ══════════════════════════════════════════════════════
+
+  getChatList(page = 1, size = 50,
+    type = 'all', search?: string): Observable<any> {
+    let params = new HttpParams()
+      .set('page', page)
+      .set('size', size)
+      .set('type', type);
+    if (search?.trim()) params = params.set('search', search.trim());
+    return this.http.get(this.chatV1, { params });
+  }
+
+  createOrGetChat(payload: any): Observable<any> {
+    return this.http.post(this.chatV1, payload);
+  }
+
+  getChatMessages(chatId: string, page = 1,
+    size = 30, beforeMessageId?: number): Observable<any> {
+    let params = new HttpParams()
+      .set('chatId', chatId)
+      .set('page', page)
+      .set('size', size);
+    if (beforeMessageId) {
+      params = params.set('beforeMessageId', beforeMessageId);
+    }
+    return this.http.get(`${this.chatV1}/messages`, { params });
+  }
+
+  sendMessageRest(payload: any): Observable<any> {
+    return this.http.post(`${this.chatV1}/messages`, payload);
+  }
+
+  markMessagesSeen(chatId: string, messageIds: number[]): Observable<any> {
+    return this.http.post(`${this.chatV1}/messages/seen`, { chatId, messageIds });
+  }
+
+  addParticipants(chatId: string, participantIds: number[]): Observable<any> {
+    return this.http.post(
+      `${this.chatV1}/${chatId}/participants`, { participantIds }
+    );
+  }
+
+  removeParticipant(chatId: string, userId: number): Observable<any> {
+    return this.http.delete(`${this.chatV1}/${chatId}/participants/${userId}`);
+  }
+
+  updateGroupInfo(chatId: string,
+    name?: string, avatar?: string): Observable<any> {
+    return this.http.patch(`${this.chatV1}/${chatId}`, { name, avatar });
+  }
+
+  saveFcmToken(token: string): Observable<any> {
+    return this.http.post(`${this.chatV1}/fcm-token`, { token });
+  }
+
+  removeFcmToken(): Observable<any> {
+    return this.http.delete(`${this.chatV1}/fcm-token`);
+  }
+
+  // ── File upload ───────────────────────────────────────
+
+  uploadChatFile(
+    base64Data: string,
+    chatId: string,
+    fileName: string
+  ): Observable<any> {
+    return this.http.post(`${this.baseUrl}/upload-file`, {
+      file: base64Data,
+      chatId,
+      fileName,
+    });
+  }
+
+  uploadGroupAvatar(
+    base64Data: string,
+    chatId: string
+  ): Observable<any> {
+    return this.http.post(`${this.baseUrl}/upload-avatar`, {
+      file: base64Data,
+      chatId,
+    });
+  }
+  // ══════════════════════════════════════════════════════
+  // KEY EXCHANGE
+  // ══════════════════════════════════════════════════════
+
+  savePublicKey(publicKey: string): Observable<any> {
+    return this.http.post(`${this.baseUrl}/public-key`, { publicKey });
+  }
+
+  getPublicKey(userId: number): Observable<any> {
+    return this.http.get(`${this.baseUrl}/public-key/${userId}`);
+  }
+
+  getParticipantPublicKeys(userIds: number[]): Observable<any> {
+    return this.http.post(`${this.baseUrl}/public-keys`, { userIds });
+  }
+
+  saveEncryptedChatKey(chatId: string,
+    encryptedAesKey: string): Observable<any> {
+    return this.http.post(`${this.baseUrl}/chat-key`,
+      { chatId, encryptedAesKey });
+  }
+
+  // Admin saving key for another user (called from e2e service)
+  saveChatKeyForUser(userId: number, chatId: string,
+    encryptedAesKey: string): Observable<any> {
+    return this.http.post(`${this.baseUrl}/chat-key/for-user`, {
+      userId, chatId, encryptedAesKey
+    });
+  }
+
+  getEncryptedChatKey(chatId: string): Observable<any> {
+    return this.http.get(`${this.baseUrl}/chat-key/${chatId}`);
   }
 
 }
