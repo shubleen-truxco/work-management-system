@@ -91,6 +91,7 @@
                             <thead>
                                 <tr>
                                     <th>#</th>
+                                    <th>Task Code</th>
                                     <th>Task</th>
                                     <th>Status</th>
                                     <th>Priority</th>
@@ -108,6 +109,9 @@
                                     <td class="col-id">
                                         <span class="task-id-badge">#{{ task.id }}</span>
                                     </td>
+                                    <td>
+                                        <span class="task-code-badge" *ngIf="task.taskCode"> {{ task.taskCode }} </span>
+                                    </td>
 
                                     <!-- Task Title + Code + Description -->
                                     <td class="col-task">
@@ -115,9 +119,6 @@
                                             <div class="priority-dot" [ngClass]="getPriorityClass(task.priority)"></div>
                                             <div>
                                                 <div class="task-code-row">
-                                                    <span class="task-code-badge" *ngIf="task.taskCode">
-                                                        {{ task.taskCode }}
-                                                    </span>
                                                     <p class="tbl-task-title">{{ task.title }}</p>
                                                 </div>
                                                 <p class="tbl-task-desc" *ngIf="task.description">
@@ -157,44 +158,44 @@
 
                                     <!-- Start Date -->
                                     <!-- Start Date -->
-<td class="col-due">
-    <div class="due-cell" *ngIf="task.startDate;"
-        [class.overdue-due]="isOverdue(task.startDate) && task.status !== 'COMPLETED'">
-        <span class="material-icons due-icon">event</span>
-        <div class="due-date-wrap">
-            <span class="due-date">
-                {{ task.startDate | date:'dd MMM yyyy' }}
-            </span>
-            <span class="due-time">
-                {{ task.startDate | date:'hh:mm a' }}
-            </span>
-        </div>
-        <span class="overdue-chip"
-            *ngIf="isOverdue(task.startDate) && task.status !== 'COMPLETED'">
-            Overdue
-        </span>
-    </div>
-    <span class="tbl-empty" *ngIf="!task.startDate">—</span>
-</td>
+                                    <td class="col-due">
+                                        <div class="due-cell" *ngIf="task.startDate;"
+                                            [class.overdue-due]="isOverdue(task.startDate) && task.status !== 'COMPLETED'">
+                                            <span class="material-icons due-icon">event</span>
+                                            <div class="due-date-wrap">
+                                                <span class="due-date">
+                                                    {{ task.startDate | date:'dd MMM yyyy' }}
+                                                </span>
+                                                <span class="due-time">
+                                                    {{ task.startDate | date:'hh:mm a' }}
+                                                </span>
+                                            </div>
+                                            <span class="overdue-chip"
+                                                *ngIf="isOverdue(task.startDate) && task.status !== 'COMPLETED'">
+                                                Overdue
+                                            </span>
+                                        </div>
+                                        <span class="tbl-empty" *ngIf="!task.startDate">—</span>
+                                    </td>
 
-<!-- END DATE - ADD THIS ENTIRE COLUMN -->
-<td class="col-due">
-    <div class="due-cell" *ngIf="task.endDate"
-        [class.overdue-due]="isOverdue(task.endDate) && task.status !== 'COMPLETED'">
-        <span class="material-icons due-icon">event_available</span>
-        <div class="due-date-wrap">
-            <span class="due-date">
-                {{ task.endDate | date:'dd MMM yyyy' }}
-            </span>
-            <span class="due-time">
-                {{ task.endDate | date:'hh:mm a' }}
-            </span>
-        </div>
-    </div>
-    <span class="tbl-empty" *ngIf="!task.endDate">—</span>
-</td>
+                                    <!-- END DATE - ADD THIS ENTIRE COLUMN -->
+                                    <td class="col-due">
+                                        <div class="due-cell" *ngIf="task.endDate"
+                                            [class.overdue-due]="isOverdue(task.endDate) && task.status !== 'COMPLETED'">
+                                            <span class="material-icons due-icon">event_available</span>
+                                            <div class="due-date-wrap">
+                                                <span class="due-date">
+                                                    {{ task.endDate | date:'dd MMM yyyy' }}
+                                                </span>
+                                                <span class="due-time">
+                                                    {{ task.endDate | date:'hh:mm a' }}
+                                                </span>
+                                            </div>
+                                        </div>
+                                        <span class="tbl-empty" *ngIf="!task.endDate">—</span>
+                                    </td>
 
-                          <!-- Actions -->
+                                    <!-- Actions -->
                                     <td class="col-actions">
                                         <div class="tbl-actions">
                                             <button class="action-btn edit" title="Edit" (click)="openEditModal(task)">
@@ -347,37 +348,34 @@
                 </div>
             </div>
 
-      <!-- Assign To + Task Code -->
-<div class="form-row">
-    <div class="form-group">
-        <label class="form-label">Assign To <span class="required">*</span></label>
-        <div class="input-wrap" [class.input-error]="errors.assignedUserId">
-            <span class="material-icons input-icon">person_search</span>
-            <select class="form-select" [(ngModel)]="form.assignedUserId"
-                (change)="clearError('assignedUserId')">
-                <option [ngValue]="null" disabled>Select employee</option>
-                <option *ngFor="let e of employees" [ngValue]="e.id">
-                    {{ e.firstName }} {{ e.lastName }}
-                    <span *ngIf="e.empId"> ({{ e.empId }})</span>
-                </option>
-            </select>
-        </div>
-        <span class="error-msg" *ngIf="errors.assignedUserId">
-            <span class="material-icons">error_outline</span>{{ errors.assignedUserId }}
-        </span>
-    </div>
-    <div class="form-group">
-        <label class="form-label">Task Code</label>
-        <div class="input-wrap" [class.readonly-field]="isEditMode">
-            <span class="material-icons input-icon">tag</span>
-            <input class="form-input" type="text" 
-                placeholder="Auto-generated if empty"
-                [(ngModel)]="form.taskCode" 
-                [readonly]="isEditMode"
-                [class.readonly-input]="isEditMode" />
-        </div>
-    </div>
-</div>
+            <!-- Assign To + Task Code -->
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label">Assign To <span class="required">*</span></label>
+                    <div class="input-wrap" [class.input-error]="errors.assignedUserId">
+                        <span class="material-icons input-icon">person_search</span>
+                        <select class="form-select" [(ngModel)]="form.assignedUserId"
+                            (change)="clearError('assignedUserId')">
+                            <option [ngValue]="null" disabled>Select employee</option>
+                            <option *ngFor="let e of employees" [ngValue]="e.id">
+                                {{ e.firstName }} {{ e.lastName }}
+                                <span *ngIf="e.empId"> ({{ e.empId }})</span>
+                            </option>
+                        </select>
+                    </div>
+                    <span class="error-msg" *ngIf="errors.assignedUserId">
+                        <span class="material-icons">error_outline</span>{{ errors.assignedUserId }}
+                    </span>
+                </div>
+                <div class="form-group" *ngIf="isEditMode">
+                    <label class="form-label">Task Code</label>
+                    <div class="input-wrap" [class.readonly-field]="isEditMode">
+                        <span class="material-icons input-icon">tag</span>
+                        <input class="form-input" type="text" placeholder="Auto-generated if empty"
+                            [(ngModel)]="form.taskCode" [readonly]="isEditMode" [class.readonly-input]="isEditMode" />
+                    </div>
+                </div>
+            </div>
 
             <!-- Start Date + Category -->
             <div class="form-row">
