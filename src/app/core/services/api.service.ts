@@ -157,9 +157,13 @@ export class ApiService {
     return this.http.patch(`${this.chatV1}/${chatId}`, { name, avatar });
   }
 
-  saveFcmToken(token: string): Observable<any> {
-    return this.http.post(`${this.chatV1}/fcm-token`, { token });
-  }
+ saveFcmToken(token: string): Observable<any> {
+        const userId = sessionStorage.getItem('id');
+  return this.http.post(
+    `${this.baseUrl}/chats/fcm-token`,
+    { token, userId }
+  );
+}
 
   removeFcmToken(): Observable<any> {
     return this.http.delete(`${this.chatV1}/fcm-token`);
@@ -172,7 +176,7 @@ export class ApiService {
     chatId: string,
     fileName: string
   ): Observable<any> {
-    return this.http.post(`${this.baseUrl}/upload-file`, {
+    return this.http.post(`${this.baseUrl}/chats/upload-file`, {
       file: base64Data,
       chatId,
       fileName,
@@ -183,7 +187,7 @@ export class ApiService {
     base64Data: string,
     chatId: string
   ): Observable<any> {
-    return this.http.post(`${this.baseUrl}/upload-avatar`, {
+    return this.http.post(`${this.baseUrl}/chats/upload-avatar`, {
       file: base64Data,
       chatId,
     });
@@ -221,5 +225,16 @@ export class ApiService {
   getEncryptedChatKey(chatId: string): Observable<any> {
     return this.http.get(`${this.baseUrl}/chat-key/${chatId}`);
   }
+
+
+  getChatMessagesWithCursor(chatId: string, beforeMessageId: number, size: number = 30): Observable<any> {
+  return this.http.get(`${this.baseUrl}/chats/messages`, {
+    params: {
+      chatId,
+      beforeMessageId: beforeMessageId.toString(),
+      size: size.toString()
+    }
+  });
+}
 
 }

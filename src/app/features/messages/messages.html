@@ -6,7 +6,6 @@
     <!-- ══════ CHAT LIST SIDEBAR ══════ -->
     <aside class="chat-list-sidebar">
 
-      <!-- Header -->
       <div class="chat-list-header">
         <div>
           <p class="page-label">INBOX</p>
@@ -17,7 +16,6 @@
         </button>
       </div>
 
-      <!-- Search -->
       <div class="chat-search-wrap">
         <span class="material-icons chat-search-icon">search</span>
         <input type="text" class="chat-search-input"
@@ -26,7 +24,6 @@
           (input)="filterChats()" />
       </div>
 
-      <!-- Filter Tabs -->
       <div class="chat-filter-tabs">
         <button class="filter-tab"
           [class.active]="activeFilter === 'all'"
@@ -44,16 +41,13 @@
           (click)="setFilter('groups')">Groups</button>
       </div>
 
-      <!-- Chat List -->
       <div class="chat-list">
 
-        <!-- Loading -->
         <div class="chat-list-loading" *ngIf="isLoadingChats">
           <span class="material-icons spin">sync</span>
           <span>Loading chats...</span>
         </div>
 
-        <!-- Empty -->
         <div class="chat-list-empty"
           *ngIf="!isLoadingChats && filteredChats.length === 0">
           <span class="material-icons">forum</span>
@@ -63,35 +57,28 @@
           </button>
         </div>
 
-        <!-- Chat Items -->
         <div class="chat-list-item"
           *ngFor="let chat of filteredChats"
           [class.active]="selectedChat?.chatId === chat.chatId"
           [class.unread]="chat.unreadCount > 0"
           (click)="selectChat(chat)">
 
-          <!-- Avatar -->
           <div class="chat-avatar-wrap">
-            <!-- Group with image avatar -->
             <div class="chat-avatar group-avatar-img"
               *ngIf="chat.isGroup && chat.avatar"
               [style.background-image]="'url(' + chat.avatar + ')'">
             </div>
-            <!-- Group without image -->
             <div class="chat-avatar group-avatar"
               *ngIf="chat.isGroup && !chat.avatar">
               <span class="material-icons">group</span>
             </div>
-            <!-- Individual -->
-            <div class="chat-avatar"
-              *ngIf="!chat.isGroup">
+            <div class="chat-avatar" *ngIf="!chat.isGroup">
               {{ chat.name.charAt(0).toUpperCase() }}
             </div>
             <span class="online-dot"
               *ngIf="chat.online && !chat.isGroup"></span>
           </div>
 
-          <!-- Info -->
           <div class="chat-item-info">
             <div class="chat-item-top">
               <span class="chat-item-name">{{ chat.name }}</span>
@@ -103,7 +90,6 @@
                   *ngIf="chat.isGroup && chat.lastSender">
                   {{ chat.lastSender }}:
                 </span>
-                <!-- Typing indicator in list -->
                 <span class="preview-typing"
                   *ngIf="chat.isTyping; else previewText">
                   <span class="typing-dots-sm">
@@ -128,7 +114,6 @@
     <!-- ══════ CHAT WINDOW ══════ -->
     <div class="chat-window" [class.empty]="!selectedChat">
 
-      <!-- No chat selected -->
       <div class="chat-empty-state" *ngIf="!selectedChat">
         <div class="empty-illustration">
           <span class="material-icons">chat_bubble_outline</span>
@@ -141,7 +126,6 @@
         </button>
       </div>
 
-      <!-- Active chat -->
       <ng-container *ngIf="selectedChat">
 
         <!-- Chat Header -->
@@ -150,21 +134,16 @@
             [class.clickable]="selectedChat.isGroup"
             (click)="selectedChat.isGroup ? openGroupInfoModal() : null">
 
-            <!-- Avatar -->
             <div class="chat-avatar-wrap">
-              <!-- Group image avatar -->
               <div class="chat-avatar md group-avatar-img"
                 *ngIf="selectedChat.isGroup && selectedChat.avatar"
                 [style.background-image]="'url(' + selectedChat.avatar + ')'">
               </div>
-              <!-- Group no image -->
               <div class="chat-avatar md group-avatar"
                 *ngIf="selectedChat.isGroup && !selectedChat.avatar">
                 <span class="material-icons">group</span>
               </div>
-              <!-- Individual -->
-              <div class="chat-avatar md"
-                *ngIf="!selectedChat.isGroup">
+              <div class="chat-avatar md" *ngIf="!selectedChat.isGroup">
                 {{ selectedChat.name.charAt(0).toUpperCase() }}
               </div>
               <span class="online-dot"
@@ -213,13 +192,11 @@
         <!-- Messages Area -->
         <div class="messages-area" #messagesArea>
 
-          <!-- Loading history -->
           <div class="messages-loading" *ngIf="isLoadingHistory">
             <span class="material-icons spin">sync</span>
             <span>Loading messages...</span>
           </div>
 
-          <!-- Date divider — Today -->
           <div class="date-divider" *ngIf="!isLoadingHistory">
             <span>Today</span>
           </div>
@@ -227,7 +204,6 @@
           <ng-container *ngIf="!isLoadingHistory">
             <ng-container *ngFor="let msg of selectedChat.messages">
 
-              <!-- Date divider -->
               <div class="date-divider" *ngIf="msg.dateDivider">
                 <span>{{ msg.dateDivider }}</span>
               </div>
@@ -244,32 +220,42 @@
                   {{ (msg.sender || '?').charAt(0).toUpperCase() }}
                 </div>
                 <div class="message-bubble-wrap">
+                  
                   <span class="msg-sender-name"
                     *ngIf="selectedChat.isGroup && msg.sender">
                     {{ msg.sender }}
                   </span>
 
-                  <!-- Image message -->
+                  <!-- ── Image ── -->
                   <div class="message-bubble received image-bubble"
                     *ngIf="isImageMessage(msg)">
-                    <div class="msg-image-placeholder">
+                    <img
+                      *ngIf="getFileUrl(msg)"
+                      [src]="getFileUrl(msg)"
+                      [alt]="getFileName(msg.text)"
+                      class="msg-image"
+                      (error)="onImageError($event)"
+                      (click)="openImage(msg)" />
+                    <div class="msg-image-fallback"
+                      *ngIf="!getFileUrl(msg)">
                       <span class="material-icons">image</span>
-                      <span>{{ msg.text }}</span>
+                      <span>{{ getFileName(msg.text) }}</span>
                     </div>
                     <span class="msg-time bubble-time">{{ msg.time }}</span>
                   </div>
 
-                  <!-- File message -->
+                  <!-- ── File ── -->
                   <div class="message-bubble received file-bubble"
                     *ngIf="isFileMessage(msg)">
-                    <div class="msg-file">
+                    <div class="msg-file" (click)="downloadFile(msg)">
                       <span class="material-icons file-icon">description</span>
-                      <span class="file-name">{{ msg.text }}</span>
+                      <span class="file-name">{{ getFileName(msg.text) }}</span>
+                      <span class="material-icons download-icon">download</span>
                     </div>
                     <span class="msg-time bubble-time">{{ msg.time }}</span>
                   </div>
 
-                  <!-- Text message -->
+                  <!-- ── Text ── -->
                   <div class="message-bubble received"
                     *ngIf="!isImageMessage(msg) && !isFileMessage(msg)">
                     <p class="msg-text">{{ msg.text }}</p>
@@ -287,12 +273,20 @@
                 *ngIf="msg.isOwn && msg.type !== 'system'">
                 <div class="message-bubble-wrap">
 
-                  <!-- Image -->
+                  <!-- ── Image ── -->
                   <div class="message-bubble sent image-bubble"
                     *ngIf="isImageMessage(msg)">
-                    <div class="msg-image-placeholder">
+                    <img
+                      *ngIf="getFileUrl(msg)"
+                      [src]="getFileUrl(msg)"
+                      [alt]="getFileName(msg.text)"
+                      class="msg-image"
+                      (error)="onImageError($event)"
+                      (click)="openImage(msg)" />
+                    <div class="msg-image-fallback"
+                      *ngIf="!getFileUrl(msg)">
                       <span class="material-icons">image</span>
-                      <span>{{ msg.text }}</span>
+                      <span>{{ getFileName(msg.text) }}</span>
                     </div>
                     <div class="msg-meta">
                       <span class="msg-time">{{ msg.time }}</span>
@@ -302,12 +296,13 @@
                     </div>
                   </div>
 
-                  <!-- File -->
+                  <!-- ── File ── -->
                   <div class="message-bubble sent file-bubble"
                     *ngIf="isFileMessage(msg)">
-                    <div class="msg-file">
+                    <div class="msg-file" (click)="downloadFile(msg)">
                       <span class="material-icons file-icon">description</span>
-                      <span class="file-name">{{ msg.text }}</span>
+                      <span class="file-name">{{ getFileName(msg.text) }}</span>
+                      <span class="material-icons download-icon">download</span>
                     </div>
                     <div class="msg-meta">
                       <span class="msg-time">{{ msg.time }}</span>
@@ -317,7 +312,7 @@
                     </div>
                   </div>
 
-                  <!-- Text -->
+                  <!-- ── Text ── -->
                   <div class="message-bubble sent"
                     *ngIf="!isImageMessage(msg) && !isFileMessage(msg)">
                     <p class="msg-text">{{ msg.text }}</p>
@@ -359,7 +354,6 @@
         <!-- Message Input -->
         <div class="message-input-area">
 
-          <!-- Hidden file inputs -->
           <input #fileInput type="file" hidden
             accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt,.zip"
             (change)="onFileSelected($event)" />
@@ -381,7 +375,6 @@
             </button>
           </div>
 
-          <!-- Upload progress -->
           <div class="upload-progress" *ngIf="isUploadingFile">
             <span class="material-icons spin">sync</span>
             <span>Uploading file...</span>
@@ -408,6 +401,24 @@
   </div>
 </div>
 
+<!-- ══════ IMAGE VIEWER ══════ -->
+<div class="image-viewer-overlay"
+  *ngIf="showImageViewer"
+  (click)="closeImageViewer()">
+  <div class="image-viewer-container" (click)="$event.stopPropagation()">
+    <button class="image-viewer-close" (click)="closeImageViewer()">
+      <span class="material-icons">close</span>
+    </button>
+    <img [src]="viewerImageUrl" class="image-viewer-img"
+      (error)="onImageError($event)" />
+    <a [href]="viewerImageUrl" download target="_blank"
+      class="image-viewer-download">
+      <span class="material-icons">download</span>
+      Download
+    </a>
+  </div>
+</div>
+
 <!-- ══════ NEW CHAT MODAL ══════ -->
 <div class="modal-overlay" *ngIf="showNewChatModal"
   (click)="closeNewChatModal()">
@@ -428,7 +439,6 @@
 
     <div class="modal-body">
 
-      <!-- Chat type toggle -->
       <div class="chat-type-toggle">
         <button class="type-btn"
           [class.active]="newChatType === 'direct'"
@@ -442,7 +452,6 @@
         </button>
       </div>
 
-      <!-- Group name -->
       <div class="form-group" *ngIf="newChatType === 'group'">
         <label class="form-label">Group Name <span class="required">*</span></label>
         <div class="input-wrap">
@@ -453,7 +462,6 @@
         </div>
       </div>
 
-      <!-- Search people -->
       <div class="form-group">
         <label class="form-label">
           {{ newChatType === 'group' ? 'Add Members' : 'Select Person' }}
@@ -466,13 +474,11 @@
         </div>
       </div>
 
-      <!-- Loading people -->
       <div class="people-loading" *ngIf="isLoadingPeople">
         <span class="material-icons spin">sync</span>
         <span>Loading employees...</span>
       </div>
 
-      <!-- People List -->
       <div class="people-list" *ngIf="!isLoadingPeople">
         <div class="people-empty" *ngIf="filteredPeople.length === 0">
           <span class="material-icons">person_off</span>
@@ -494,7 +500,6 @@
         </div>
       </div>
 
-      <!-- Selected chips (group) -->
       <div class="selected-chips"
         *ngIf="selectedPeople.length > 0 && newChatType === 'group'">
         <div class="chip" *ngFor="let p of selectedPeople">
@@ -545,7 +550,6 @@
 
     <div class="modal-body" *ngIf="selectedChat">
 
-      <!-- Group Avatar -->
       <div class="group-avatar-section">
         <div class="group-avatar-preview"
           [class.has-image]="selectedChat.avatar"
@@ -565,7 +569,6 @@
         <p class="avatar-hint">JPG, PNG up to 5MB</p>
       </div>
 
-      <!-- Group Name -->
       <div class="form-group">
         <label class="form-label">Group Name</label>
         <div class="input-wrap">
@@ -576,7 +579,6 @@
         </div>
       </div>
 
-      <!-- Members -->
       <div class="view-section">
         <div class="view-section-title">
           <span class="material-icons">people</span>
@@ -604,7 +606,6 @@
             </div>
           </div>
 
-          <!-- Empty members -->
           <div class="members-empty"
             *ngIf="!selectedChat.participants?.length">
             <span class="material-icons">group_off</span>

@@ -7,6 +7,7 @@ import { FormsModule }   from '@angular/forms';
 import { Sidebar }       from '../../shared/sidebar/sidebar';
 import { ApiService }    from '../../core/services/api.service';
 import { ToastService }  from '../../shared/toast/toast.service';
+import { FcmService }    from '../../core/services/fcm.service';
 
 @Component({
   selector:    'app-messages',
@@ -17,9 +18,9 @@ import { ToastService }  from '../../shared/toast/toast.service';
 })
 export class Messages implements OnInit, OnDestroy, AfterViewChecked {
 
-  @ViewChild('messagesArea')     messagesArea!:    ElementRef;
-  @ViewChild('fileInput')        fileInput!:       ElementRef;
-  @ViewChild('avatarInput')      avatarInput!:     ElementRef;
+  @ViewChild('messagesArea') messagesArea!:  ElementRef;
+  @ViewChild('fileInput')    fileInput!:     ElementRef;
+  @ViewChild('avatarInput')  avatarInput!:   ElementRef;
 
   // ── Current user ──────────────────────────────────────
   currentUserId   = sessionStorage.getItem('id')    || '';
@@ -27,54 +28,60 @@ export class Messages implements OnInit, OnDestroy, AfterViewChecked {
   private token   = sessionStorage.getItem('token') || '';
 
   // ── WebSocket ─────────────────────────────────────────
-  private ws!: WebSocket;
+  private ws!:          WebSocket;
   private wsUrl         = 'ws://localhost:8080/wms/ws/chat';
   private shouldScroll  = false;
   private typingTimer:  any;
   private pingInterval: any;
 
-  // ── E2E ───────────────────────────────────────────────
-  private chatAesKeys:      Map<string, CryptoKey> = new Map();
-  private readonly E2E_PREFIX = 'E2E:';
-
   // ── Last read ─────────────────────────────────────────
   private readonly READ_KEY = 'chat_last_read_';
 
   // ── Typing ────────────────────────────────────────────
-  isTyping              = false;
-  typingPerson          = '';
+  isTyping               = false;
+  typingPerson           = '';
   private typingTimeouts: Map<string, any> = new Map();
 
   // ── UI State ──────────────────────────────────────────
-  searchChat        = '';
-  activeFilter      = 'all';
-  newMessage        = '';
-  isLoadingHistory  = false;
-  isLoadingChats    = false;
-  isCreatingChat    = false;
-  isLoadingPeople   = false;
-  isUploadingFile   = false;
-  isUploadingAvatar = false;
-  selectedChat: any = null;
-  showNewChatModal  = false;
+  searchChat         = '';
+  activeFilter       = 'all';
+  newMessage         = '';
+  isLoadingHistory   = false;
+  isLoadingChats     = false;
+  isCreatingChat     = false;
+  isLoadingPeople    = false;
+  isUploadingFile    = false;
+  isUploadingAvatar  = false;
+  selectedChat: any  = null;
+  showNewChatModal   = false;
   showGroupInfoModal = false;
-  newChatType       = 'direct';
-  newGroupName      = '';
-  editGroupName     = '';
-  searchPeople      = '';
-  selectedPeople:   any[] = [];
-  employees:        any[] = [];
-  chats:            any[] = [];
-  filteredChats:    any[] = [];
+  newChatType        = 'direct';
+  newGroupName       = '';
+  editGroupName      = '';
+  searchPeople       = '';
+  selectedPeople:    any[] = [];
+  employees:         any[] = [];
+  chats:             any[] = [];
+  filteredChats:     any[] = [];
+
+  // ── Image viewer ──────────────────────────────────────
+  showImageViewer   = false;
+  viewerImageUrl    = '';
 
   constructor(
     private api:   ApiService,
     private toast: ToastService,
+    private fcm:   FcmService,
   ) {}
 
-  async ngOnInit(): Promise<void> {
+  // ══════════════════════════════════════════════════════
+  // LIFECYCLE
+  // ══════════════════════════════════════════════════════
+
+  ngOnInit(): void {
     this.loadChatList();
     this.connectWebSocket();
+    this.initFcm();
   }
 
   ngOnDestroy(): void {
@@ -83,6 +90,7 @@ export class Messages implements OnInit, OnDestroy, AfterViewChecked {
     if (this.typingTimer)  clearTimeout(this.typingTimer);
     this.typingTimeouts.forEach(t => clearTimeout(t));
     this.typingTimeouts.clear();
+    this.fcm.removeToken();
   }
 
   ngAfterViewChecked(): void {
@@ -93,81 +101,27 @@ export class Messages implements OnInit, OnDestroy, AfterViewChecked {
   }
 
   // ══════════════════════════════════════════════════════
-  // E2E ENCRYPTION
+  // FCM
   // ══════════════════════════════════════════════════════
 
-  private async getOrCreateAesKey(chatId: string): Promise<CryptoKey> {
-    if (this.chatAesKeys.has(chatId)) {
-      return this.chatAesKeys.get(chatId)!;
-    }
-    const stored = localStorage.getItem(`aes_${this.currentUserId}_${chatId}`);
-    if (stored) {
-      try {
-        const aesKey = await crypto.subtle.importKey(
-          'raw', this.base64ToBuffer(stored),
-          { name: 'AES-GCM' }, false, ['encrypt', 'decrypt']
-        );
-        this.chatAesKeys.set(chatId, aesKey);
-        return aesKey;
-      } catch {}
-    }
-    const aesKey = await crypto.subtle.generateKey(
-      { name: 'AES-GCM', length: 256 }, true, ['encrypt', 'decrypt']
-    );
-    const raw = await crypto.subtle.exportKey('raw', aesKey);
-    localStorage.setItem(
-      `aes_${this.currentUserId}_${chatId}`,
-      this.bufferToBase64(raw)
-    );
-    this.chatAesKeys.set(chatId, aesKey);
-    return aesKey;
-  }
+  private initFcm(): void {
+    this.fcm.requestPermission();
 
-  async encryptMessage(text: string, chatId: string): Promise<string> {
-    try {
-      const aesKey  = await this.getOrCreateAesKey(chatId);
-      const iv      = crypto.getRandomValues(new Uint8Array(12));
-      const cipher  = await crypto.subtle.encrypt(
-        { name: 'AES-GCM', iv }, aesKey, new TextEncoder().encode(text)
-      );
-      const combined = new Uint8Array(12 + cipher.byteLength);
-      combined.set(iv, 0);
-      combined.set(new Uint8Array(cipher), 12);
-      return this.E2E_PREFIX + this.bufferToBase64(combined.buffer);
-    } catch { return text; }
-  }
+    this.fcm.listenForeground((payload) => {
+      const title  = payload.notification?.title ?? 'New Message';
+      const body   = payload.notification?.body  ?? '';
+      const chatId = payload.data?.chatId;
 
-  async decryptMessage(text: string, chatId: string): Promise<string> {
-    if (!text?.startsWith(this.E2E_PREFIX)) return text ?? '';
-    try {
-      const aesKey   = await this.getOrCreateAesKey(chatId);
-      const combined = this.base64ToBuffer(text.replace(this.E2E_PREFIX, ''));
-      const plain    = await crypto.subtle.decrypt(
-        { name: 'AES-GCM', iv: new Uint8Array(combined.slice(0, 12)) },
-        aesKey, combined.slice(12)
-      );
-      return new TextDecoder().decode(plain);
-    } catch { return '[Encrypted message]'; }
-  }
+      this.toast.show(`${title}: ${body}`, 'info');
 
-  // ── FIX: decrypt preview for chat list ───────────────
-  async decryptPreview(text: string, chatId: string): Promise<string> {
-    if (!text) return '';
-    if (!text.startsWith(this.E2E_PREFIX)) return text;
-    const decrypted = await this.decryptMessage(text, chatId);
-    return decrypted === '[Encrypted message]' ? '🔒 Encrypted' : decrypted;
-  }
-
-  private bufferToBase64(buf: ArrayBuffer): string {
-    return btoa(String.fromCharCode(...new Uint8Array(buf)));
-  }
-
-  private base64ToBuffer(b64: string): ArrayBuffer {
-    const bin = atob(b64);
-    const buf = new ArrayBuffer(bin.length);
-    const arr = new Uint8Array(buf);
-    for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
-    return buf;
+      if (chatId && this.selectedChat?.chatId !== chatId) {
+        const chat = this.chats.find(c => c.chatId === chatId);
+        if (chat) {
+          chat.unreadCount = (chat.unreadCount || 0) + 1;
+          this.filterChats();
+        }
+      }
+    });
   }
 
   // ══════════════════════════════════════════════════════
@@ -184,17 +138,20 @@ export class Messages implements OnInit, OnDestroy, AfterViewChecked {
 
   countUnread(messages: any[], chatId: string): number {
     const lastReadId = this.getLastRead(chatId);
-    return messages.filter(m => !m.isOwn && Number(m.id) > lastReadId).length;
+    return messages.filter(
+      m => !m.isOwn && Number(m.id) > lastReadId
+    ).length;
   }
-
-  getChatKey(chat: any): string { return chat.chatId; }
 
   // ══════════════════════════════════════════════════════
   // WEBSOCKET
   // ══════════════════════════════════════════════════════
 
   connectWebSocket(): void {
-    if (!this.token) { this.toast.show('No auth token found', 'error'); return; }
+    if (!this.token) {
+      this.toast.show('No auth token found', 'error');
+      return;
+    }
 
     this.ws = new WebSocket(`${this.wsUrl}?token=${this.token}`);
 
@@ -211,24 +168,27 @@ export class Messages implements OnInit, OnDestroy, AfterViewChecked {
       }, 30000);
     };
 
-    this.ws.onmessage = async (event) => {
+    this.ws.onmessage = (event) => {
       const data = JSON.parse(event.data);
-      if (data.success !== undefined || data.error !== undefined ||
-          data.type === 'pong') return;
+
+      if (data.success !== undefined ||
+          data.error   !== undefined ||
+          data.type    === 'pong') return;
 
       switch (data.event) {
-        case 'new_message':    await this.handleNewMessageEvent(data); break;
-        case 'typing_start':   this.handleTypingEvent(data, true);     break;
-        case 'typing_stop':    this.handleTypingEvent(data, false);    break;
-        case 'message_seen':   this.handleSeenEvent(data);             break;
+        case 'new_message':   this.handleNewMessageEvent(data);    break;
+        case 'typing_start':  this.handleTypingEvent(data, true);  break;
+        case 'typing_stop':   this.handleTypingEvent(data, false); break;
+        case 'message_seen':  this.handleSeenEvent(data);          break;
         case 'user_online':
-        case 'user_offline':   this.handleOnlineStatus(data);          break;
-        case 'sync_required':  this.loadChatList();                    break;
-        case 'join_ack':       console.log('Joined:', data.chatId);    break;
+        case 'user_offline':  this.handleOnlineStatus(data);       break;
+        case 'sync_required': this.loadChatList();                 break;
+        case 'join_ack':      console.log('Joined:', data.chatId); break;
       }
     };
 
-    this.ws.onerror = () => this.toast.show('Connection error. Retrying...', 'error');
+    this.ws.onerror = () =>
+      this.toast.show('Connection error. Retrying...', 'error');
 
     this.ws.onclose = (event) => {
       clearInterval(this.pingInterval);
@@ -252,57 +212,76 @@ export class Messages implements OnInit, OnDestroy, AfterViewChecked {
   // SOCKET EVENTS
   // ══════════════════════════════════════════════════════
 
-  async handleNewMessageEvent(data: any): Promise<void> {
-    const msg    = data.data;
-    const chatId = msg?.chatId;
-    if (!chatId) return;
+  handleNewMessageEvent(data: any): void {
+  const msg    = data.data;
+  const chatId = msg?.chatId;
+  if (!chatId) return;
 
-    let chat = this.chats.find(c => c.chatId === chatId);
-    if (!chat) { this.loadChatList(); return; }
+  const chat = this.chats.find(c => c.chatId === chatId);
+  if (!chat) { this.loadChatList(); return; }
 
-    const isOwn      = String(msg.sender?.userId) === String(this.currentUserId);
-    const isChatOpen = this.selectedChat?.chatId === chatId;
-    const decrypted  = await this.decryptMessage(msg.text, chatId);
+  const isOwn      = String(msg.sender?.userId) === String(this.currentUserId);
+  const isChatOpen = this.selectedChat?.chatId === chatId;
 
-    const newMsg = {
-      id:     msg.messageId,
-      sender: msg.sender?.name,
-      text:   decrypted,
-      time:   this.formatTime(msg.createdAt),
-      isOwn,
-      status: msg.status,
-      type:   msg.type || 'text',
-      read:   isOwn || isChatOpen,
-    };
-
-    chat.messages = chat.messages || [];
-    chat.messages.push(newMsg);
-
-    // ── FIX: store decrypted preview ──────────────────
-    chat.lastMessage     = decrypted;
-    chat.lastMessageTime = newMsg.time;
-
-    if (isOwn || isChatOpen) {
+  // ✅ Check if this is our own message (optimistic update confirmation)
+  if (isOwn && isChatOpen) {
+    // Find and update the optimistic message
+    const tempMsg = chat.messages?.find((m: any) => m.status === 'sending' && m.isOwn);
+    if (tempMsg) {
+      // ✅ Update the temporary message with real data
+      tempMsg.id = msg.messageId;
+      tempMsg.status = msg.status || 'sent';
+      tempMsg.time = this.formatTime(msg.createdAt);
+      delete tempMsg.tempId; // Remove temporary marker
+      
+      // ✅ Don't add duplicate message
       this.saveLastRead(chatId, msg.messageId);
       chat.unreadCount = 0;
-      if (isChatOpen) {
-        this.api.markMessagesSeen(chatId, [msg.messageId]).subscribe();
-      }
-    } else {
-      chat.unreadCount = this.countUnread(chat.messages, chatId);
+      return;
     }
-
-    if (isChatOpen) this.shouldScroll = true;
-    this.sortAndFilterChats();
   }
+
+  // ✅ For messages from others or not found optimistic message
+  const newMsg = {
+    id:      msg.messageId,
+    sender:  msg.sender?.name,
+    text:    msg.text ?? '',
+    time:    this.formatTime(msg.createdAt),
+    isOwn,
+    status:  msg.status,
+    type:    msg.type || 'text',
+    read:    isOwn || isChatOpen,
+    fileUrl: msg.fileUrl
+             ? this.api.getProfileImageUrl(msg.fileUrl)
+             : null,
+  };
+
+  chat.messages = chat.messages || [];
+  chat.messages.push(newMsg);
+  chat.lastMessage     = msg.text ?? '';
+  chat.lastMessageTime = newMsg.time;
+
+  if (isOwn || isChatOpen) {
+    this.saveLastRead(chatId, msg.messageId);
+    chat.unreadCount = 0;
+    if (isChatOpen) {
+      this.api.markMessagesSeen(chatId, [msg.messageId]).subscribe();
+    }
+  } else {
+    chat.unreadCount = this.countUnread(chat.messages, chatId);
+  }
+
+  if (isChatOpen) this.shouldScroll = true;
+  this.sortAndFilterChats();
+}
 
   handleTypingEvent(data: any, isTyping: boolean): void {
     const chat = this.chats.find(c => c.chatId === data.chatId);
     if (!chat) return;
 
-    const isChatOpen     = this.selectedChat?.chatId === data.chatId;
-    chat.isTyping        = isTyping;
-    chat.typingPerson    = isTyping ? data.senderName : null;
+    const isChatOpen  = this.selectedChat?.chatId === data.chatId;
+    chat.isTyping     = isTyping;
+    chat.typingPerson = isTyping ? data.senderName : null;
 
     if (isChatOpen) {
       this.isTyping     = isTyping;
@@ -313,17 +292,24 @@ export class Messages implements OnInit, OnDestroy, AfterViewChecked {
     if (isTyping) {
       const existing = this.typingTimeouts.get(data.chatId);
       if (existing) clearTimeout(existing);
+
       const timeout = setTimeout(() => {
-        chat.isTyping = false; chat.typingPerson = null;
+        chat.isTyping     = false;
+        chat.typingPerson = null;
         if (this.selectedChat?.chatId === data.chatId) {
-          this.isTyping = false; this.typingPerson = '';
+          this.isTyping     = false;
+          this.typingPerson = '';
         }
         this.typingTimeouts.delete(data.chatId);
       }, 4000);
+
       this.typingTimeouts.set(data.chatId, timeout);
     } else {
       const existing = this.typingTimeouts.get(data.chatId);
-      if (existing) { clearTimeout(existing); this.typingTimeouts.delete(data.chatId); }
+      if (existing) {
+        clearTimeout(existing);
+        this.typingTimeouts.delete(data.chatId);
+      }
     }
   }
 
@@ -352,51 +338,41 @@ export class Messages implements OnInit, OnDestroy, AfterViewChecked {
   loadChatList(): void {
     this.isLoadingChats = true;
     this.api.getChatList(1, 50).subscribe({
-      next: async (res: any) => {
+      next: (res: any) => {
         this.isLoadingChats = false;
         if (!res.success) return;
 
         const items = res.data?.items ?? [];
 
-        // Build chats and decrypt last message previews
-        const mapped = await Promise.all(items.map(async (c: any) => {
-          // ── FIX: decrypt last message preview ──────────
-          let lastMsgText = c.lastMessage?.text ?? '';
-          if (lastMsgText.startsWith(this.E2E_PREFIX)) {
-            lastMsgText = await this.decryptPreview(lastMsgText, c.chatId);
-          }
-
-          return {
-            chatId:          c.chatId,
-            id:              c.chatId,
-            name:            c.name,
-            avatar:          c.avatar,
-            isGroup:         c.type === 'group',
-            online:          c.participants?.[0]?.isOnline ?? false,
-            lastMessage:     lastMsgText,
-            lastMessageTime: c.lastMessage?.createdAt
-                               ? this.formatTime(c.lastMessage.createdAt)
-                               : '',
-            unreadCount:     c.unreadCount ?? 0,
-            members:         c.participantsCount,
-            lastSender:      c.lastMessage?.senderName,
-            isPinned:        c.isPinned,
-            isMuted:         c.isMuted,
-            updatedAt:       c.updatedAt,
-            userId:          c.type === 'individual'
-                               ? String(c.participants?.[0]?.userId) : null,
-            roomId:          c.type === 'group' ? c.chatId : null,
-            participants:    c.participants ?? [],
-            messages:        [],
-            historyLoaded:   false,
-            isTyping:        false,
-            typingPerson:    null,
-          };
+        this.chats = items.map((c: any) => ({
+          chatId:          c.chatId,
+          id:              c.chatId,
+          name:            c.name,
+          avatar:          c.avatar
+                             ? this.api.getProfileImageUrl(c.avatar)
+                             : null,
+          isGroup:         c.type === 'group',
+          online:          c.participants?.[0]?.isOnline ?? false,
+          lastMessage:     c.lastMessage?.text ?? '',
+          lastMessageTime: c.lastMessage?.createdAt
+                             ? this.formatTime(c.lastMessage.createdAt)
+                             : '',
+          unreadCount:     c.unreadCount ?? 0,
+          members:         c.participantsCount,
+          lastSender:      c.lastMessage?.senderName,
+          isPinned:        c.isPinned,
+          isMuted:         c.isMuted,
+          updatedAt:       c.updatedAt,
+          userId:          c.type === 'individual'
+                             ? String(c.participants?.[0]?.userId) : null,
+          roomId:          c.type === 'group' ? c.chatId : null,
+          participants:    c.participants ?? [],
+          messages:        [],
+          historyLoaded:   false,
+          isTyping:        false,
+          typingPerson:    null,
         }));
 
-        this.chats = mapped;
-
-        // Build employees from individual chats
         this.employees = items
           .filter((c: any) => c.type === 'individual' && c.participants?.length)
           .map((c: any) => ({
@@ -408,7 +384,8 @@ export class Messages implements OnInit, OnDestroy, AfterViewChecked {
         this.sortAndFilterChats();
 
         this.chats
-          .filter(c => c.isGroup && c.chatId && this.ws?.readyState === WebSocket.OPEN)
+          .filter(c => c.isGroup && c.chatId
+            && this.ws?.readyState === WebSocket.OPEN)
           .forEach(c => this.joinRoom(c.chatId));
       },
       error: () => {
@@ -427,35 +404,26 @@ export class Messages implements OnInit, OnDestroy, AfterViewChecked {
 
     this.isLoadingHistory = true;
     this.api.getChatMessages(chat.chatId, 1, 30).subscribe({
-      next: async (res: any) => {
+      next: (res: any) => {
         this.isLoadingHistory = false;
         if (!res.success) return;
 
         const messages = res.data?.items ?? [];
 
-        chat.messages = await Promise.all(
-          messages.map(async (m: any) => {
-            const isOwn     = String(m.sender?.userId) === String(this.currentUserId);
-            const isSystem  = m.type === 'system';
-
-            // ── FIX: only decrypt non-system messages ──
-            let text = m.text ?? '';
-            if (!isSystem && text.startsWith(this.E2E_PREFIX)) {
-              text = await this.decryptMessage(text, chat.chatId);
-            }
-
-            return {
-              id:     m.messageId,
-              sender: isSystem ? 'System' : m.sender?.name,
-              text,
-              time:   this.formatTime(m.createdAt),
-              isOwn,
-              status: m.status,
-              type:   m.type || 'text',
-              read:   true,
-            };
-          })
-        );
+        chat.messages = messages.map((m: any) => ({
+          id:      m.messageId,
+          sender:  m.type === 'system' ? 'System' : m.sender?.name,
+          text:    m.text ?? '',
+          time:    this.formatTime(m.createdAt),
+          isOwn:   String(m.sender?.userId) === String(this.currentUserId),
+          status:  m.status,
+          type:    m.type || 'text',
+          read:    true,
+          // ── Build full file URL ───────────────────
+          fileUrl: m.fileUrl
+                   ? this.api.getProfileImageUrl(m.fileUrl)
+                   : null,
+        }));
 
         chat.historyLoaded = true;
 
@@ -494,33 +462,52 @@ export class Messages implements OnInit, OnDestroy, AfterViewChecked {
   // SEND MESSAGE
   // ══════════════════════════════════════════════════════
 
-  async sendMessage(): Promise<void> {
-    if (!this.newMessage.trim() || !this.selectedChat) return;
-    if (this.ws?.readyState !== WebSocket.OPEN) {
-      this.toast.show('Not connected. Retrying...', 'error');
-      this.connectWebSocket();
-      return;
-    }
-
-    const plainText = this.newMessage.trim();
-    const encrypted = await this.encryptMessage(plainText, this.selectedChat.chatId);
-
-    this.ws.send(JSON.stringify({
-      type:    'new_message',
-      chatId:  this.selectedChat.chatId,
-      text:    encrypted,
-      msgType: 'text',
-    }));
-
-    this.newMessage = '';
-    this.shouldScroll = true;
-
-    this.ws.send(JSON.stringify({
-      type:   'typing_stop',
-      chatId: this.selectedChat.chatId,
-    }));
+ sendMessage(): void {
+  if (!this.newMessage.trim() || !this.selectedChat) return;
+  if (this.ws?.readyState !== WebSocket.OPEN) {
+    this.toast.show('Not connected. Retrying...', 'error');
+    this.connectWebSocket();
+    return;
   }
 
+  const messageText = this.newMessage.trim();
+  
+  const tempId = Date.now(); // Temporary ID until we get real one from server
+  const optimisticMessage = {
+    id:      tempId,
+    sender:  this.currentUserName,
+    text:    messageText,
+    time:    this.formatTime(new Date().toISOString()),
+    isOwn:   true,
+    status:  'sending', // ✅ Show as "sending" first
+    type:    'text',
+    read:    true,
+    fileUrl: null,
+    tempId:  tempId  // ✅ Mark as temporary
+  };
+
+  this.selectedChat.messages = this.selectedChat.messages || [];
+  this.selectedChat.messages.push(optimisticMessage);
+  
+  this.selectedChat.lastMessage = messageText;
+  this.selectedChat.lastMessageTime = optimisticMessage.time;
+  
+  this.newMessage = '';
+  this.shouldScroll = true;
+
+  this.ws.send(JSON.stringify({
+    type:    'new_message',
+    chatId:  this.selectedChat.chatId,
+    text:    messageText,
+    msgType: 'text',
+    tempId:  tempId  // ✅ Send temp ID so we can match response
+  }));
+
+  this.ws.send(JSON.stringify({
+    type:   'typing_stop',
+    chatId: this.selectedChat.chatId,
+  }));
+}
   // ══════════════════════════════════════════════════════
   // FILE UPLOAD
   // ══════════════════════════════════════════════════════
@@ -533,11 +520,9 @@ export class Messages implements OnInit, OnDestroy, AfterViewChecked {
     const input = event.target as HTMLInputElement;
     const file  = input.files?.[0];
     if (!file || !this.selectedChat) return;
-
-    // Reset input
     input.value = '';
 
-    const maxSize = 10 * 1024 * 1024; // 10MB
+    const maxSize = 10 * 1024 * 1024;
     if (file.size > maxSize) {
       this.toast.show('File too large. Max 10MB allowed.', 'error');
       return;
@@ -545,52 +530,63 @@ export class Messages implements OnInit, OnDestroy, AfterViewChecked {
 
     this.isUploadingFile = true;
 
-    // try {
-    //   // Upload file to server
-    //   const formData = new FormData();
-    //   formData.append('file',   file);
-    //   formData.append('chatId', this.selectedChat.chatId);
+    try {
+      const base64 = await this.fileToBase64(file);
 
-    //   this.api.uploadChatFile(formData).subscribe({
-    //     next: async (res: any) => {
-    //       this.isUploadingFile = false;
-    //       if (!res.success) {
-    //         this.toast.show('File upload failed', 'error');
-    //         return;
-    //       }
+      this.api.uploadChatFile(
+        base64, this.selectedChat.chatId, file.name
+      ).subscribe({
+        next: (res: any) => {
+          this.isUploadingFile = false;
+          if (!res.success) {
+            this.toast.show('File upload failed', 'error');
+            return;
+          }
 
-    //       const fileUrl  = res.data?.url  ?? '';
-    //       const fileType = file.type.startsWith('image/') ? 'image' : 'file';
+          const rawUrl   = res.data?.url ?? '';
+          const fullUrl  = this.api.getProfileImageUrl(rawUrl);
+          const fileType = file.type.startsWith('image/') ? 'image' : 'file';
+          const msgText  = fileType === 'image'
+            ? `[Image] ${file.name}`
+            : `[File] ${file.name}`;
 
-    //       // Send file message via WS
-    //       const msgText  = fileType === 'image'
-    //         ? `[Image] ${file.name}`
-    //         : `[File] ${file.name}`;
+          if (this.ws?.readyState === WebSocket.OPEN) {
+            this.ws.send(JSON.stringify({
+              type:     'new_message',
+              chatId:   this.selectedChat.chatId,
+              text:     msgText,
+              msgType:  fileType,
+              fileUrl:  rawUrl,     // ← send raw path to BE
+              fileName: file.name,
+            }));
+          }
 
-    //       const encrypted = await this.encryptMessage(
-    //         msgText, this.selectedChat.chatId
-    //       );
+          // ── Optimistically add message to UI ──────
+          const newMsg = {
+            id:      Date.now(),
+            sender:  this.currentUserName,
+            text:    msgText,
+            time:    this.formatTime(new Date().toISOString()),
+            isOwn:   true,
+            status:  'sent',
+            type:    fileType,
+            read:    true,
+            fileUrl: fullUrl,    // ← full URL for display
+          };
 
-    //       if (this.ws?.readyState === WebSocket.OPEN) {
-    //         this.ws.send(JSON.stringify({
-    //           type:    'new_message',
-    //           chatId:  this.selectedChat.chatId,
-    //           text:    encrypted,
-    //           msgType: fileType,
-    //           fileUrl,
-    //           fileName: file.name,
-    //         }));
-    //       }
-    //     },
-    //     error: () => {
-    //       this.isUploadingFile = false;
-    //       this.toast.show('File upload failed', 'error');
-    //     }
-    //   });
-    // } catch {
-    //   this.isUploadingFile = false;
-    //   this.toast.show('Something went wrong', 'error');
-    // }
+          this.selectedChat.messages = this.selectedChat.messages || [];
+          this.selectedChat.messages.push(newMsg);
+          this.shouldScroll = true;
+        },
+        error: () => {
+          this.isUploadingFile = false;
+          this.toast.show('File upload failed', 'error');
+        }
+      });
+    } catch {
+      this.isUploadingFile = false;
+      this.toast.show('Failed to read file', 'error');
+    }
   }
 
   // ══════════════════════════════════════════════════════
@@ -601,11 +597,10 @@ export class Messages implements OnInit, OnDestroy, AfterViewChecked {
     this.avatarInput?.nativeElement.click();
   }
 
-  onAvatarSelected(event: Event): void {
+  async onAvatarSelected(event: Event): Promise<void> {
     const input = event.target as HTMLInputElement;
     const file  = input.files?.[0];
     if (!file || !this.selectedChat?.isGroup) return;
-
     input.value = '';
 
     if (!file.type.startsWith('image/')) {
@@ -613,7 +608,7 @@ export class Messages implements OnInit, OnDestroy, AfterViewChecked {
       return;
     }
 
-    const maxSize = 5 * 1024 * 1024; // 5MB
+    const maxSize = 5 * 1024 * 1024;
     if (file.size > maxSize) {
       this.toast.show('Image too large. Max 5MB', 'error');
       return;
@@ -621,33 +616,48 @@ export class Messages implements OnInit, OnDestroy, AfterViewChecked {
 
     this.isUploadingAvatar = true;
 
-    const formData = new FormData();
-    formData.append('file',   file);
-    formData.append('chatId', this.selectedChat.chatId);
+    try {
+      const base64 = await this.fileToBase64(file);
 
-    // this.api.uploadGroupAvatar(formData).subscribe({
-    //   next: (res: any) => {
-    //     this.isUploadingAvatar = false;
-    //     if (res.success && res.data?.url) {
-    //       // Update group avatar
-    //       this.api.updateGroupInfo(
-    //         this.selectedChat.chatId, undefined, res.data.url
-    //       ).subscribe({
-    //         next: (updateRes: any) => {
-    //           if (updateRes.success) {
-    //             this.selectedChat.avatar = res.data.url;
-    //             this.toast.show('Group avatar updated!', 'success');
-    //             this.loadChatList();
-    //           }
-    //         }
-    //       });
-    //     }
-    //   },
-    //   error: () => {
-    //     this.isUploadingAvatar = false;
-    //     this.toast.show('Avatar upload failed', 'error');
-    //   }
-    // });
+      this.api.uploadGroupAvatar(
+        base64, this.selectedChat.chatId
+      ).subscribe({
+        next: (res: any) => {
+          this.isUploadingAvatar = false;
+          if (res.success && res.data?.url) {
+            const fullUrl = this.api.getProfileImageUrl(res.data.url);
+            this.selectedChat.avatar = fullUrl;
+
+            // Also update in chats array
+            const chat = this.chats.find(
+              c => c.chatId === this.selectedChat.chatId
+            );
+            if (chat) chat.avatar = fullUrl;
+
+            this.toast.show('Group avatar updated!', 'success');
+            this.loadChatList();
+          } else {
+            this.toast.show('Avatar upload failed', 'error');
+          }
+        },
+        error: () => {
+          this.isUploadingAvatar = false;
+          this.toast.show('Avatar upload failed', 'error');
+        }
+      });
+    } catch {
+      this.isUploadingAvatar = false;
+      this.toast.show('Failed to read image', 'error');
+    }
+  }
+
+  private fileToBase64(file: File): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const reader   = new FileReader();
+      reader.onload  = () => resolve(reader.result as string);
+      reader.onerror = () => reject(new Error('Failed to read file'));
+      reader.readAsDataURL(file);
+    });
   }
 
   // ══════════════════════════════════════════════════════
@@ -656,7 +666,7 @@ export class Messages implements OnInit, OnDestroy, AfterViewChecked {
 
   openGroupInfoModal(): void {
     if (!this.selectedChat?.isGroup) return;
-    this.editGroupName     = this.selectedChat.name;
+    this.editGroupName      = this.selectedChat.name;
     this.showGroupInfoModal = true;
   }
 
@@ -793,7 +803,10 @@ export class Messages implements OnInit, OnDestroy, AfterViewChecked {
     this.api.createOrGetChat(payload).subscribe({
       next: (res: any) => {
         this.isCreatingChat = false;
-        if (!res.success) { this.toast.show(res.message || 'Failed', 'error'); return; }
+        if (!res.success) {
+          this.toast.show(res.message || 'Failed', 'error');
+          return;
+        }
 
         this.closeNewChatModal();
         this.loadChatList();
@@ -811,6 +824,23 @@ export class Messages implements OnInit, OnDestroy, AfterViewChecked {
         this.toast.show('Something went wrong', 'error');
       }
     });
+  }
+
+  // ══════════════════════════════════════════════════════
+  // IMAGE VIEWER
+  // ══════════════════════════════════════════════════════
+
+  openImage(msg: any): void {
+    const url = this.getFileUrl(msg);
+    if (url) {
+      this.viewerImageUrl = url;
+      this.showImageViewer = true;
+    }
+  }
+
+  closeImageViewer(): void {
+    this.showImageViewer = false;
+    this.viewerImageUrl  = '';
   }
 
   // ══════════════════════════════════════════════════════
@@ -869,21 +899,62 @@ export class Messages implements OnInit, OnDestroy, AfterViewChecked {
   }
 
   getEmployeeName(userId: string): string {
-    return this.employees.find(e => String(e.id) === String(userId))?.name || '';
+    return this.employees.find(
+      e => String(e.id) === String(userId)
+    )?.name || '';
   }
 
   getInitial(name: string): string {
     return (name || '?').charAt(0).toUpperCase();
   }
 
+  // ── Get full file URL from message ────────────────────
+  getFileUrl(msg: any): string {
+    if (msg.fileUrl) return msg.fileUrl;
+    return '';
+  }
+
+  // ── Get clean filename from message text ─────────────
+  getFileName(text: string): string {
+    return (text ?? '')
+      .replace('[Image] ', '')
+      .replace('[File] ', '')
+      .trim();
+  }
+
+  // ── Download file ─────────────────────────────────────
+  downloadFile(msg: any): void {
+    const url      = this.getFileUrl(msg);
+    const fileName = this.getFileName(msg.text);
+    if (!url) return;
+    const a    = document.createElement('a');
+    a.href     = url;
+    a.download = fileName;
+    a.target   = '_blank';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  }
+
+  // ── Image load error fallback ─────────────────────────
+  onImageError(event: Event): void {
+    const img = event.target as HTMLImageElement;
+    img.style.display = 'none';
+    const parent = img.parentElement;
+    if (parent && !parent.querySelector('.img-error')) {
+      const err = document.createElement('div');
+      err.className   = 'img-error';
+      err.innerHTML   = '<span class="material-icons">broken_image</span><span>Image unavailable</span>';
+      parent.appendChild(err);
+    }
+  }
+
   isImageMessage(msg: any): boolean {
-    return msg.type === 'image' ||
-           msg.text?.startsWith('[Image]');
+    return msg.type === 'image' || msg.text?.startsWith('[Image]');
   }
 
   isFileMessage(msg: any): boolean {
-    return msg.type === 'file' ||
-           msg.text?.startsWith('[File]');
+    return msg.type === 'file' || msg.text?.startsWith('[File]');
   }
 
   isSystemMessage(msg: any): boolean {
@@ -902,15 +973,20 @@ export class Messages implements OnInit, OnDestroy, AfterViewChecked {
   formatTime(iso: string): string {
     if (!iso) return '';
     try {
-      const d     = new Date(iso);
-      const today = new Date();
-      if (d.toDateString() === today.toDateString()) {
-        return d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
-      }
+      const d         = new Date(iso);
+      const today     = new Date();
       const yesterday = new Date(today);
       yesterday.setDate(today.getDate() - 1);
+
+      if (d.toDateString() === today.toDateString()) {
+        return d.toLocaleTimeString('en-US', {
+          hour: '2-digit', minute: '2-digit'
+        });
+      }
       if (d.toDateString() === yesterday.toDateString()) return 'Yesterday';
-      return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      return d.toLocaleDateString('en-US', {
+        month: 'short', day: 'numeric'
+      });
     } catch { return ''; }
   }
 }

@@ -1286,3 +1286,130 @@
   color: var(--color-danger);
   background: rgba(220,38,38,0.05);
 }
+
+/* ── Image in chat ───────────────────────────────── */
+.msg-image {
+  max-width:     240px;
+  max-height:    200px;
+  width:         100%;
+  border-radius: var(--radius-md);
+  display:       block;
+  cursor:        pointer;
+  object-fit:    cover;
+  transition:    opacity 0.2s;
+}
+
+.msg-image:hover { opacity: 0.85; }
+
+.msg-image-fallback {
+  display:        flex;
+  flex-direction: column;
+  align-items:    center;
+  gap:            4px;
+  padding:        var(--space-4);
+  color:          var(--color-text-muted);
+  font-size:      var(--text-xs);
+}
+
+.msg-image-fallback .material-icons {
+  font-size: 2rem;
+  color:     var(--color-teal);
+}
+
+.img-error {
+  display:        flex;
+  flex-direction: column;
+  align-items:    center;
+  gap:            4px;
+  padding:        var(--space-3);
+  color:          var(--color-text-muted);
+  font-size:      var(--text-xs);
+}
+
+/* ── File message ────────────────────────────────── */
+.msg-file {
+  display:     flex;
+  align-items: center;
+  gap:         var(--space-2);
+  cursor:      pointer;
+  padding:     var(--space-2) 0;
+  min-width:   180px;
+}
+
+.msg-file:hover .file-name { text-decoration: underline; }
+
+.file-icon    { color: var(--color-teal); font-size: 1.4rem !important; }
+.download-icon { font-size: 1.1rem !important; margin-left: auto; opacity: 0.7; }
+
+.file-name {
+  font-size:   var(--text-sm);
+  font-weight: 600;
+  flex:        1;
+  word-break:  break-all;
+}
+
+/* ── Image viewer overlay ────────────────────────── */
+.image-viewer-overlay {
+  position:        fixed;
+  inset:           0;
+  background:      rgba(0, 0, 0, 0.85);
+  display:         flex;
+  align-items:     center;
+  justify-content: center;
+  z-index:         9999;
+  animation:       fadeIn 0.15s ease;
+}
+
+.image-viewer-container {
+  position:  relative;
+  max-width: 90vw;
+  max-height: 90vh;
+  display:   flex;
+  flex-direction: column;
+  align-items: center;
+  gap:       var(--space-3);
+}
+
+.image-viewer-img {
+  max-width:    90vw;
+  max-height:   80vh;
+  border-radius: var(--radius-lg);
+  object-fit:   contain;
+  box-shadow:   0 20px 60px rgba(0,0,0,0.5);
+}
+
+.image-viewer-close {
+  position:   absolute;
+  top:        -44px;
+  right:      0;
+  background: rgba(255,255,255,0.1);
+  border:     none;
+  color:      white;
+  width:      36px;
+  height:     36px;
+  border-radius: 50%;
+  cursor:     pointer;
+  display:    flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s;
+}
+
+.image-viewer-close:hover { background: rgba(255,255,255,0.2); }
+
+.image-viewer-download {
+  display:         flex;
+  align-items:     center;
+  gap:             var(--space-2);
+  padding:         var(--space-2) var(--space-4);
+  background:      rgba(255,255,255,0.1);
+  color:           white;
+  border-radius:   var(--radius-full);
+  text-decoration: none;
+  font-size:       var(--text-sm);
+  font-family:     var(--font-heading);
+  font-weight:     600;
+  transition:      background 0.2s;
+}
+
+.image-viewer-download:hover { background: rgba(255,255,255,0.2); }
