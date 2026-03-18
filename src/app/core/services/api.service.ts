@@ -171,17 +171,15 @@ export class ApiService {
 
   // ── File upload ───────────────────────────────────────
 
-  uploadChatFile(
-    base64Data: string,
-    chatId: string,
-    fileName: string
-  ): Observable<any> {
-    return this.http.post(`${this.baseUrl}/chats/upload-file`, {
-      file: base64Data,
-      chatId,
-      fileName,
-    });
-  }
+ uploadChatFile(payload: {
+  chatId:     string;
+  file?:      string;        // base64 — single file
+  fileName?:  string;
+  files?:     string[];      // base64 list — multiple files
+  fileNames?: string[];
+}): Observable<any> {
+  return this.http.post(`${this.baseUrl}/chats/upload-file`, payload);
+}
 
   uploadGroupAvatar(
     base64Data: string,
@@ -192,40 +190,6 @@ export class ApiService {
       chatId,
     });
   }
-  // ══════════════════════════════════════════════════════
-  // KEY EXCHANGE
-  // ══════════════════════════════════════════════════════
-
-  savePublicKey(publicKey: string): Observable<any> {
-    return this.http.post(`${this.baseUrl}/public-key`, { publicKey });
-  }
-
-  getPublicKey(userId: number): Observable<any> {
-    return this.http.get(`${this.baseUrl}/public-key/${userId}`);
-  }
-
-  getParticipantPublicKeys(userIds: number[]): Observable<any> {
-    return this.http.post(`${this.baseUrl}/public-keys`, { userIds });
-  }
-
-  saveEncryptedChatKey(chatId: string,
-    encryptedAesKey: string): Observable<any> {
-    return this.http.post(`${this.baseUrl}/chat-key`,
-      { chatId, encryptedAesKey });
-  }
-
-  // Admin saving key for another user (called from e2e service)
-  saveChatKeyForUser(userId: number, chatId: string,
-    encryptedAesKey: string): Observable<any> {
-    return this.http.post(`${this.baseUrl}/chat-key/for-user`, {
-      userId, chatId, encryptedAesKey
-    });
-  }
-
-  getEncryptedChatKey(chatId: string): Observable<any> {
-    return this.http.get(`${this.baseUrl}/chat-key/${chatId}`);
-  }
-
 
   getChatMessagesWithCursor(chatId: string, beforeMessageId: number, size: number = 30): Observable<any> {
   return this.http.get(`${this.baseUrl}/chats/messages`, {
