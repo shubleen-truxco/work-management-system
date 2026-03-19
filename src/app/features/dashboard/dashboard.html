@@ -1,1 +1,290 @@
-<p>dashboard works!</p>
+<div class="app-shell">
+  <app-sidebar></app-sidebar>
+
+  <div class="dashboard-panel">
+
+    <!-- ══ HEADER ══ -->
+    <header class="header">
+      <div class="header-left">
+        <span class="page-label">WORKFORCE</span>
+        <h1 class="page-title">Dashboard</h1>
+      </div>
+      <div class="user-info">
+        <button class="db-refresh-btn" (click)="loadAll()" [disabled]="isLoading" title="Refresh">
+          <span class="material-icons" [class.spin]="isLoading">sync</span>
+        </button>
+        <div class="user-avatar">{{ currentUserName.charAt(0).toUpperCase() }}</div>
+        <span class="user-name">{{ currentUserName }}</span>
+      </div>
+    </header>
+
+    <main class="main">
+
+      <!-- ══ LOADING ══ -->
+    <div class="db-loading" *ngIf="isLoading">
+      <span class="material-icons spin">sync</span>
+      <span>Loading dashboard...</span>
+    </div>
+
+    <ng-container *ngIf="!isLoading">
+
+      <!-- ══ STAT CARDS ══ -->
+      <div class="stat-grid">
+
+        <div class="stat-card">
+          <div class="stat-card-inner">
+            <div class="stat-icon-wrap teal">
+              <span class="material-icons">people</span>
+            </div>
+            <div class="stat-body">
+              <p class="stat-label">Total employees</p>
+              <p class="stat-val">{{ totalEmployees }}</p>
+            </div>
+          </div>
+          <div class="stat-bar-wrap">
+            <div class="stat-bar teal" [style.width.%]="80"></div>
+          </div>
+        </div>
+
+        <div class="stat-card">
+          <div class="stat-card-inner">
+            <div class="stat-icon-wrap green">
+              <span class="material-icons">how_to_reg</span>
+            </div>
+            <div class="stat-body">
+              <p class="stat-label">Present today</p>
+              <p class="stat-val">{{ presentToday }}</p>
+              <p class="stat-foot stat-up">{{ attendancePct }}% attendance</p>
+            </div>
+          </div>
+          <div class="stat-bar-wrap">
+            <div class="stat-bar green" [style.width.%]="attendancePct"></div>
+          </div>
+        </div>
+
+        <div class="stat-card">
+          <div class="stat-card-inner">
+            <div class="stat-icon-wrap amber">
+              <span class="material-icons">assignment</span>
+            </div>
+            <div class="stat-body">
+              <p class="stat-label">Open tasks</p>
+              <p class="stat-val">{{ openTasks }}</p>
+              <p class="stat-foot stat-down" *ngIf="overdueTasks > 0">
+                {{ overdueTasks }} overdue
+              </p>
+            </div>
+          </div>
+          <div class="stat-bar-wrap">
+            <div class="stat-bar amber" [style.width.%]="taskStats.inProgress"></div>
+          </div>
+        </div>
+
+        <div class="stat-card">
+          <div class="stat-card-inner">
+            <div class="stat-icon-wrap teal">
+              <span class="material-icons">chat_bubble</span>
+            </div>
+            <div class="stat-body">
+              <p class="stat-label">Unread messages</p>
+              <p class="stat-val">{{ unreadMessages }}</p>
+              <p class="stat-foot" *ngIf="unreadChats > 0" style="color:var(--color-text-muted)">
+                {{ unreadChats }} chats
+              </p>
+            </div>
+          </div>
+          <div class="stat-bar-wrap">
+            <div class="stat-bar teal" [style.width.%]="25"></div>
+          </div>
+        </div>
+
+      </div>
+
+
+            <!-- ══ MID ROW ══ -->
+      <div class="mid-row">
+
+        <!-- Attendance chart -->
+        <div class="db-card chart-card">
+          <div class="card-head">
+            <span class="card-title">Attendance this week</span>
+            <a class="card-link" routerLink="/attendance">View report</a>
+          </div>
+          <div class="chart-bars">
+            <div class="chart-col" *ngFor="let d of attendanceWeek">
+              <div class="bar-stack">
+                <div class="bar-segment bar-present"
+                  [style.height.%]="getBarPct(d.present, d.present + d.absent)"
+                  [title]="d.present + ' present'">
+                </div>
+                <div class="bar-segment bar-absent"
+                  [style.height.%]="getBarPct(d.absent, d.present + d.absent)"
+                  [title]="d.absent + ' absent'">
+                </div>
+                <div class="bar-empty" *ngIf="d.present === 0 && d.absent === 0"></div>
+              </div>
+              <span class="bar-label">{{ d.day }}</span>
+            </div>
+          </div>
+          <div class="chart-legend">
+            <span class="legend-dot teal"></span> Present
+            <span class="legend-dot gray" style="margin-left:12px"></span> Absent
+          </div>
+        </div>
+
+        <!-- Task progress -->
+        <div class="db-card">
+          <div class="card-head">
+            <span class="card-title">Task progress</span>
+            <a class="card-link" routerLink="/tasks">View all</a>
+          </div>
+          <div class="prog-row">
+            <span class="prog-label">Completed</span>
+            <div class="prog-track">
+              <div class="prog-fill green" [style.width.%]="taskStats.completed"></div>
+            </div>
+            <span class="prog-pct">{{ taskStats.completed }}%</span>
+          </div>
+          <div class="prog-row">
+            <span class="prog-label">In progress</span>
+            <div class="prog-track">
+              <div class="prog-fill amber" [style.width.%]="taskStats.inProgress"></div>
+            </div>
+            <span class="prog-pct">{{ taskStats.inProgress }}%</span>
+          </div>
+          <div class="prog-row">
+            <span class="prog-label">Pending</span>
+            <div class="prog-track">
+              <div class="prog-fill gray" [style.width.%]="taskStats.pending"></div>
+            </div>
+            <span class="prog-pct">{{ taskStats.pending }}%</span>
+          </div>
+          <div class="prog-row">
+            <span class="prog-label">Overdue</span>
+            <div class="prog-track">
+              <div class="prog-fill red" [style.width.%]="taskStats.overdue"></div>
+            </div>
+            <span class="prog-pct">{{ taskStats.overdue }}%</span>
+          </div>
+
+          <div class="quick-btns">
+            <a class="qbtn" routerLink="/tasks">
+              <span class="material-icons qbtn-icon teal">add_task</span>
+              New task
+            </a>
+            <a class="qbtn" routerLink="/tasks" [queryParams]="{filter:'overdue'}">
+              <span class="material-icons qbtn-icon red">warning</span>
+              Overdue
+            </a>
+            <a class="qbtn" routerLink="/employee">
+              <span class="material-icons qbtn-icon blue">person_add</span>
+              Add employee
+            </a>
+            <a class="qbtn" routerLink="/attendance">
+              <span class="material-icons qbtn-icon green">event_available</span>
+              Attendance
+            </a>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- ══ BOTTOM ROW ══ -->
+      <div class="bot-row">
+
+        <!-- Today's attendance -->
+        <div class="db-card">
+          <div class="card-head">
+            <span class="card-title">Today's attendance</span>
+            <a class="card-link" routerLink="/attendance">Mark attendance</a>
+          </div>
+
+          <div class="att-empty" *ngIf="todayAttendance.length === 0">
+            <span class="material-icons">event_busy</span>
+            <p>No attendance records yet</p>
+          </div>
+
+          <div class="att-row" *ngFor="let a of todayAttendance">
+            <div class="att-av"
+              [style.background]="parsedColor(a.color).bg"
+              [style.color]="parsedColor(a.color).text">
+              {{ a.initials }}
+            </div>
+            <div class="att-info">
+              <p class="att-name">{{ a.name }}</p>
+              <p class="att-role">{{ a.role }}</p>
+            </div>
+            <span class="att-status" [ngClass]="statusClass(a.status)">
+              {{ a.status }}
+            </span>
+          </div>
+        </div>
+
+        <!-- Recent tasks -->
+        <div class="db-card">
+          <div class="card-head">
+            <span class="card-title">Recent tasks</span>
+            <a class="card-link" routerLink="/tasks">View all</a>
+          </div>
+
+          <div class="task-empty" *ngIf="recentTasks.length === 0">
+            <span class="material-icons">assignment_turned_in</span>
+            <p>All caught up!</p>
+          </div>
+
+          <div class="task-row" *ngFor="let t of recentTasks">
+            <div class="task-dot"
+              [class.dot-red]="t.priority === 'High'"
+              [class.dot-amber]="t.priority === 'Medium'"
+              [class.dot-green]="t.priority === 'Low'">
+            </div>
+            <div class="task-body">
+              <p class="task-title">{{ t.title }}</p>
+              <p class="task-meta">
+                {{ t.assignee }}
+                <span class="task-due" [class.overdue-text]="t.isOverdue">
+                  · {{ t.dueLabel }}
+                </span>
+              </p>
+            </div>
+            <span class="task-pri" [ngClass]="priorityClass(t.priority)">
+              {{ t.priority }}
+            </span>
+          </div>
+        </div>
+
+        <!-- Recent messages -->
+        <div class="db-card">
+          <div class="card-head">
+            <span class="card-title">Recent messages</span>
+            <a class="card-link" routerLink="/messages">Open inbox</a>
+          </div>
+
+          <div class="msg-empty" *ngIf="recentChats.length === 0">
+            <span class="material-icons">forum</span>
+            <p>No messages yet</p>
+          </div>
+
+          <div class="msg-row" *ngFor="let c of recentChats">
+            <div class="msg-av"
+              [style.background]="parsedColor(c.color).bg"
+              [style.color]="parsedColor(c.color).text">
+              {{ c.initials }}
+            </div>
+            <div class="msg-body">
+              <p class="msg-name">{{ c.name }}</p>
+              <p class="msg-preview">{{ c.preview }}</p>
+            </div>
+            <div class="msg-right">
+              <span class="msg-time">{{ c.time }}</span>
+              <span class="unread-dot" *ngIf="c.unread"></span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+    </ng-container>
+    </main>
+  </div>
+</div>

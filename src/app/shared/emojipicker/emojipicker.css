@@ -1,0 +1,26 @@
+.emoji-container {
+  width: 250px;
+  background: #fff;
+  border-radius: 10px;
+  padding: 10px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+.emoji-grid {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 6px;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.emoji-grid span {
+  cursor: pointer;
+  font-size: 20px;
+}
+
+.categories {
+  display: flex;
+  gap: 8px;
+  margin: 5px 0;
+}

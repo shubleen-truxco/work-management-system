@@ -1,0 +1,22 @@
+<div class="emoji-container" (click)="$event.stopPropagation()">
+
+  <input type="text"
+         placeholder="Search emoji..."
+         [(ngModel)]="emojiSearch"
+         (input)="onSearch()" />
+
+  <div class="categories">
+    <span *ngFor="let c of emojiCategories; let i = index"
+          (click)="activeCategory = i">
+      {{ c.icon }}
+    </span>
+  </div>
+
+  <div class="emoji-grid">
+    <span *ngFor="let e of visibleEmojis"
+          (click)="selectEmoji(e.emoji)">
+      {{ e.emoji }}
+    </span>
+  </div>
+
+</div>

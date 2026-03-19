@@ -2,7 +2,7 @@ import { Injectable } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { environment } from '../../../environments/environment';
-
+import { forkJoin } from 'rxjs';
 
 @Injectable({
   providedIn: 'root'
@@ -87,6 +87,33 @@ export class ApiService {
       {}
     );
   }
+
+  getTodayAttendance(): Observable<any> {
+  const today = new Date().toISOString().split('T')[0]; // "2026-03-19"
+  return this.http.post(
+    `${this.baseUrl}/attendance-list?page=1&size=100&date=${today}`,
+    {}   // empty body — all params are @RequestParam query params
+  );
+}
+ 
+// Weekly summary — calls attendance-list for each day Mon–Fri
+// Returns array of { day, present, absent } for the chart
+getWeeklyAttendanceSummary(): Observable<any> {
+  const today  = new Date();
+  const monday = new Date(today);
+  monday.setDate(today.getDate() - today.getDay() + 1);
+ 
+  const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'];
+  const requests = days.map((day, i) => {
+    const d = new Date(monday);
+    d.setDate(monday.getDate() + i);
+    const dateStr = d.toISOString().split('T')[0];
+    return this.http.post<any>(
+      `${this.baseUrl}/attendance-list?page=1&size=200&date=${dateStr}`, {}
+    );
+  });
+  return forkJoin(requests);
+}
 
   // ══════════════════════════════════════════════════════
   // TASKS
@@ -200,5 +227,6 @@ export class ApiService {
     }
   });
 }
+
 
 }

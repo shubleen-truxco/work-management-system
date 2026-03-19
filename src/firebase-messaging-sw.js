@@ -24,4 +24,19 @@ messaging.onBackgroundMessage((payload) => {
     badge: '/assets/icons/icon-72x72.png',
     data:  payload.data,
   });
+  
+self.addEventListener('notificationclick', function(event) {
+
+  const data = event.notification.data;
+
+  if (data?.clickAction === 'OPEN_TASK') {
+    const taskId = data.taskId;
+
+    event.waitUntil(
+      clients.openWindow(`/tasks?taskId=${taskId}`)
+    );
+  }
+
+});
+  
 });

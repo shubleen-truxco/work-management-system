@@ -51,23 +51,19 @@
                 <div class="controls-right">
                     <div class="search-wrap">
                         <span class="material-icons search-icon">search</span>
-                        <input type="text" class="search-input" placeholder="Search tasks..." [(ngModel)]="searchText"
-                            (input)="onSearch()" />
+                        <input type="text" class="search-input" placeholder="Search tasks..." [(ngModel)]="searchText" (input)="onSearch()" />
                     </div>
                     <div class="view-toggle">
-                        <button class="view-btn" [class.active]="viewMode === 'list'" (click)="viewMode = 'list'"
-                            title="List view">
+                        <button class="view-btn" [class.active]="viewMode === 'list'" (click)="viewMode = 'list'" title="List view">
                             <span class="material-icons">view_list</span>
                         </button>
-                        <button class="view-btn" [class.active]="viewMode === 'board'" (click)="viewMode = 'board'"
-                            title="Board view">
+                        <button class="view-btn" [class.active]="viewMode === 'board'" (click)="viewMode = 'board'" title="Board view">
                             <span class="material-icons">view_kanban</span>
                         </button>
                     </div>
                 </div>
             </div>
 
-            <!-- Loading -->
             <div class="loading-overlay" *ngIf="isLoading">
                 <span class="material-icons spin">sync</span>
                 <span>Loading tasks...</span>
@@ -75,17 +71,13 @@
 
             <ng-container *ngIf="!isLoading">
 
-                <!-- ── LIST VIEW ── -->
+                <!-- LIST VIEW -->
                 <div class="task-list-view" *ngIf="viewMode === 'list'">
-
                     <div class="empty-state" *ngIf="filteredTasks.length === 0">
                         <span class="material-icons">task_alt</span>
                         <p>No tasks found</p>
-                        <button class="btn-create-first" (click)="openAddModal()">
-                            Create your first task
-                        </button>
+                        <button class="btn-create-first" (click)="openAddModal()">Create your first task</button>
                     </div>
-
                     <div class="task-table-wrap" *ngIf="filteredTasks.length > 0">
                         <table class="task-table">
                             <thead>
@@ -97,105 +89,85 @@
                                     <th>Priority</th>
                                     <th>Assigned To</th>
                                     <th>Start Date</th>
-                                    <th>End Date</th> <!-- ADD THIS -->
+                                    <th>End Date</th>
                                     <th>Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 <tr *ngFor="let task of filteredTasks"
                                     [class.row-overdue]="isOverdue(task.startDate) && task.status !== 'COMPLETED'">
-
-                                    <!-- ID -->
-                                    <td class="col-id">
-                                        <span class="task-id-badge">#{{ task.id }}</span>
-                                    </td>
-                                    <td>
-                                        <span class="task-code-badge" *ngIf="task.taskCode"> {{ task.taskCode }} </span>
-                                    </td>
-
-                                    <!-- Task Title + Code + Description -->
+                                    <td class="col-id"><span class="task-id-badge">#{{ task.id }}</span></td>
+                                    <td><span class="task-code-badge" *ngIf="task.taskCode">{{ task.taskCode }}</span></td>
                                     <td class="col-task">
                                         <div class="task-title-wrap">
                                             <div class="priority-dot" [ngClass]="getPriorityClass(task.priority)"></div>
                                             <div>
-                                                <div class="task-code-row">
-                                                    <p class="tbl-task-title">{{ task.title }}</p>
-                                                </div>
+                                                <p class="tbl-task-title">{{ task.title }}</p>
                                                 <p class="tbl-task-desc" *ngIf="task.description">
-                                                    {{ task.description | slice:0:60 }}{{ task.description?.length > 60
-                                                    ? '...' : '' }}
+                                                    {{ task.description | slice:0:60 }}{{ task.description?.length > 60 ? '...' : '' }}
                                                 </p>
                                             </div>
                                         </div>
                                     </td>
-
-                                    <!-- Status -->
                                     <td class="col-status">
                                         <span class="status-pill" [ngClass]="getStatusClass(task.status)">
-                                            <span class="status-dot"></span>
-                                            {{ formatStatus(task.status) }}
+                                            <span class="status-dot"></span>{{ formatStatus(task.status) }}
                                         </span>
                                     </td>
-
-                                    <!-- Priority -->
                                     <td class="col-priority">
                                         <span class="priority-badge" [ngClass]="getPriorityClass(task.priority)">
                                             <span class="material-icons">{{ getPriorityIcon(task.priority) }}</span>
                                             {{ task.priority }}
                                         </span>
                                     </td>
-
-                                    <!-- Assigned To -->
+                                    <!-- Multi-assignee display — reads assignedUsers: string[] -->
                                     <td class="col-assignee">
-                                        <div class="assignee-cell" *ngIf="task.assignedTo; else noAssignee">
-                                            <div class="assignee-avatar">{{ getInitial(task.assignedTo) }}</div>
-                                            <span class="assignee-name">{{ task.assignedTo }}</span>
-                                        </div>
-                                        <ng-template #noAssignee>
-                                            <span class="tbl-empty">—</span>
-                                        </ng-template>
+                                        <ng-container *ngIf="task.assignedUsers?.length; else noAssignee">
+                                            <div class="assignee-stack">
+                                                <div class="assignee-avatars">
+                                                    <div class="assignee-avatar stacked"
+                                                        *ngFor="let name of task.assignedUsers.slice(0,3); let i = index"
+                                                        [style.z-index]="10 - i"
+                                                        [title]="name">
+                                                        {{ getInitial(name) }}
+                                                    </div>
+                                                    <span class="assignee-more" *ngIf="task.assignedUsers.length > 3">
+                                                        +{{ task.assignedUsers.length - 3 }}
+                                                    </span>
+                                                </div>
+                                                <span class="assignee-name" *ngIf="task.assignedUsers.length === 1">
+                                                    {{ task.assignedUsers[0] }}
+                                                </span>
+                                                <span class="assignee-name" *ngIf="task.assignedUsers.length > 1">
+                                                    {{ task.assignedUsers.length }} people
+                                                </span>
+                                            </div>
+                                        </ng-container>
+                                        <ng-template #noAssignee><span class="tbl-empty">—</span></ng-template>
                                     </td>
-
-                                    <!-- Start Date -->
-                                    <!-- Start Date -->
                                     <td class="col-due">
-                                        <div class="due-cell" *ngIf="task.startDate;"
+                                        <div class="due-cell" *ngIf="task.startDate"
                                             [class.overdue-due]="isOverdue(task.startDate) && task.status !== 'COMPLETED'">
                                             <span class="material-icons due-icon">event</span>
                                             <div class="due-date-wrap">
-                                                <span class="due-date">
-                                                    {{ task.startDate | date:'dd MMM yyyy' }}
-                                                </span>
-                                                <span class="due-time">
-                                                    {{ task.startDate | date:'hh:mm a' }}
-                                                </span>
+                                                <span class="due-date">{{ task.startDate | date:'dd MMM yyyy' }}</span>
+                                                <span class="due-time">{{ task.startDate | date:'hh:mm a' }}</span>
                                             </div>
-                                            <span class="overdue-chip"
-                                                *ngIf="isOverdue(task.startDate) && task.status !== 'COMPLETED'">
-                                                Overdue
-                                            </span>
+                                            <span class="overdue-chip" *ngIf="isOverdue(task.startDate) && task.status !== 'COMPLETED'">Overdue</span>
                                         </div>
                                         <span class="tbl-empty" *ngIf="!task.startDate">—</span>
                                     </td>
-
-                                    <!-- END DATE - ADD THIS ENTIRE COLUMN -->
                                     <td class="col-due">
                                         <div class="due-cell" *ngIf="task.endDate"
                                             [class.overdue-due]="isOverdue(task.endDate) && task.status !== 'COMPLETED'">
                                             <span class="material-icons due-icon">event_available</span>
                                             <div class="due-date-wrap">
-                                                <span class="due-date">
-                                                    {{ task.endDate | date:'dd MMM yyyy' }}
-                                                </span>
-                                                <span class="due-time">
-                                                    {{ task.endDate | date:'hh:mm a' }}
-                                                </span>
+                                                <span class="due-date">{{ task.endDate | date:'dd MMM yyyy' }}</span>
+                                                <span class="due-time">{{ task.endDate | date:'hh:mm a' }}</span>
                                             </div>
                                         </div>
                                         <span class="tbl-empty" *ngIf="!task.endDate">—</span>
                                     </td>
-
-                                    <!-- Actions -->
                                     <td class="col-actions">
                                         <div class="tbl-actions">
                                             <button class="action-btn edit" title="Edit" (click)="openEditModal(task)">
@@ -206,29 +178,23 @@
                                             </button>
                                         </div>
                                     </td>
-
                                 </tr>
                             </tbody>
                         </table>
                     </div>
                 </div>
 
-                <!-- ── BOARD VIEW ── -->
+                <!-- BOARD VIEW -->
                 <div class="task-board-view" *ngIf="viewMode === 'board'">
                     <div class="board-col" *ngFor="let col of boardColumns">
                         <div class="board-col-header" [ngClass]="col.color">
                             <span class="material-icons">{{ col.icon }}</span>
                             <span class="board-col-title">{{ col.label }}</span>
-                            <span class="board-col-count">
-                                {{ getTasksByStatus(col.status).length }}
-                            </span>
+                            <span class="board-col-count">{{ getTasksByStatus(col.status).length }}</span>
                         </div>
                         <div class="board-col-body">
-                            <div class="empty-col" *ngIf="getTasksByStatus(col.status).length === 0">
-                                No tasks
-                            </div>
-                            <div class="board-task-card" *ngFor="let task of getTasksByStatus(col.status)"
-                                (click)="openViewModal(task)">
+                            <div class="empty-col" *ngIf="getTasksByStatus(col.status).length === 0">No tasks</div>
+                            <div class="board-task-card" *ngFor="let task of getTasksByStatus(col.status)" (click)="openViewModal(task)">
                                 <div class="board-task-top">
                                     <span class="task-id-badge sm">#{{ task.id }}</span>
                                     <div class="board-top-right">
@@ -239,20 +205,14 @@
                                     </div>
                                 </div>
                                 <p class="board-task-title">{{ task.title }}</p>
-                                <p class="board-task-desc" *ngIf="task.description">
-                                    {{ task.description | slice:0:60 }}...
-                                </p>
+                                <p class="board-task-desc" *ngIf="task.description">{{ task.description | slice:0:60 }}...</p>
                                 <div class="board-task-footer">
-                                    <div class="assignee-avatar sm" *ngIf="task.assignedTo">
-                                        {{ getInitial(task.assignedTo) }}
-                                    </div>
+                                    <div class="assignee-avatar sm" *ngIf="task.assignedUsers?.length">{{ getInitial(task.assignedUsers[0]) }}</div>
                                     <span class="board-due" *ngIf="task.startDate"
                                         [class.overdue]="isOverdue(task.startDate) && task.status !== 'COMPLETED'">
-                                        <span class="material-icons">event</span>
-                                        {{ task.startDate | date:'dd MMM' }}
+                                        <span class="material-icons">event</span>{{ task.startDate | date:'dd MMM' }}
                                     </span>
-                                    <button class="icon-edit-btn"
-                                        (click)="$event.stopPropagation(); openEditModal(task)">
+                                    <button class="icon-edit-btn" (click)="$event.stopPropagation(); openEditModal(task)">
                                         <span class="material-icons">edit</span>
                                     </button>
                                 </div>
@@ -261,7 +221,6 @@
                     </div>
                 </div>
 
-                <!-- Pagination -->
                 <div class="pagination" *ngIf="totalPages > 1">
                     <button class="page-btn" (click)="prevPage()" [disabled]="isFirst">
                         <span class="material-icons">chevron_left</span>
@@ -275,7 +234,6 @@
                         <span class="material-icons">chevron_right</span>
                     </button>
                 </div>
-
             </ng-container>
         </main>
     </div>
@@ -287,17 +245,13 @@
 
         <div class="modal-header">
             <div class="modal-title-wrap">
-                <span class="material-icons modal-title-icon">
-                    {{ isEditMode ? 'edit_note' : 'add_task' }}
-                </span>
+                <span class="material-icons modal-title-icon">{{ isEditMode ? 'edit_note' : 'add_task' }}</span>
                 <div>
                     <p class="modal-label">{{ isEditMode ? 'EDIT TASK' : 'NEW TASK' }}</p>
                     <h2 class="modal-title">{{ isEditMode ? 'Update Task' : 'Create Task' }}</h2>
                 </div>
             </div>
-            <button class="modal-close" (click)="closeModal()">
-                <span class="material-icons">close</span>
-            </button>
+            <button class="modal-close" (click)="closeModal()"><span class="material-icons">close</span></button>
         </div>
 
         <div class="modal-body">
@@ -307,8 +261,8 @@
                 <label class="form-label">Task Title <span class="required">*</span></label>
                 <div class="input-wrap" [class.input-error]="errors.title">
                     <span class="material-icons input-icon">title</span>
-                    <input class="form-input" type="text" placeholder="Enter task title" [(ngModel)]="form.title"
-                        (input)="clearError('title')" />
+                    <input class="form-input" type="text" placeholder="Enter task title"
+                        [(ngModel)]="form.title" (input)="clearError('title')" />
                 </div>
                 <span class="error-msg" *ngIf="errors.title">
                     <span class="material-icons">error_outline</span>{{ errors.title }}
@@ -348,36 +302,71 @@
                 </div>
             </div>
 
-            <!-- Assign To + Task Code -->
-            <div class="form-row">
-                <div class="form-group">
-                    <label class="form-label">Assign To <span class="required">*</span></label>
-                    <div class="input-wrap" [class.input-error]="errors.assignedUserId">
-                        <span class="material-icons input-icon">person_search</span>
-                        <select class="form-select" [(ngModel)]="form.assignedUserId"
-                            (change)="clearError('assignedUserId')">
-                            <option [ngValue]="null" disabled>Select employee</option>
-                            <option *ngFor="let e of employees" [ngValue]="e.id">
-                                {{ e.firstName }} {{ e.lastName }}
-                                <span *ngIf="e.empId"> ({{ e.empId }})</span>
-                            </option>
-                        </select>
+            <!-- ✅ MULTI-ASSIGN — replaces the old single select -->
+            <div class="form-group">
+                <label class="form-label">Assign To <span class="required">*</span></label>
+
+                <!-- Selected chips row -->
+                <div class="chips-row" *ngIf="form.assignedUserIds.length > 0">
+                    <div class="emp-chip" *ngFor="let id of form.assignedUserIds">
+                        <div class="chip-avatar">{{ getEmployeeInitial(id) }}</div>
+                        <span class="chip-name">{{ getEmployeeName(id) }}</span>
+                        <button class="chip-remove" type="button" (click)="removeEmployee(id)">
+                            <span class="material-icons">close</span>
+                        </button>
                     </div>
-                    <span class="error-msg" *ngIf="errors.assignedUserId">
-                        <span class="material-icons">error_outline</span>{{ errors.assignedUserId }}
-                    </span>
                 </div>
-                <div class="form-group" *ngIf="isEditMode">
-                    <label class="form-label">Task Code</label>
-                    <div class="input-wrap" [class.readonly-field]="isEditMode">
-                        <span class="material-icons input-icon">tag</span>
-                        <input class="form-input" type="text" placeholder="Auto-generated if empty"
-                            [(ngModel)]="form.taskCode" [readonly]="isEditMode" [class.readonly-input]="isEditMode" />
+
+                <!-- Multi-select trigger box -->
+                <div class="multi-select-container" [class.has-error]="errors.assignedUserIds"
+                     (click)="showEmployeeDropdown = true">
+                    <span class="material-icons input-icon-abs">person_search</span>
+                    <input class="form-input multi-input"
+                        #empInput
+                        type="text"
+                        [placeholder]="form.assignedUserIds.length ? 'Add more...' : 'Search employees...'"
+                        [(ngModel)]="employeeSearch"
+                        (focus)="showEmployeeDropdown = true"
+                        (blur)="closeDropdown()"
+                        autocomplete="off" />
+                    <span class="material-icons dropdown-arrow-icon"
+                        [class.rotated]="showEmployeeDropdown">expand_more</span>
+                </div>
+
+                <!-- Dropdown -->
+                <div class="emp-dropdown" *ngIf="showEmployeeDropdown">
+                    <div class="emp-dropdown-empty" *ngIf="filteredEmployees.length === 0">
+                        No employees found
                     </div>
+                    <div class="emp-dropdown-item"
+                        *ngFor="let e of filteredEmployees"
+                        [class.selected]="isEmployeeSelected(e.id)"
+                        (mousedown)="$event.preventDefault(); toggleEmployee(e.id)">
+                        <div class="emp-item-avatar">{{ (e.firstName?.[0] ?? '?').toUpperCase() }}</div>
+                        <div class="emp-item-info">
+                            <span class="emp-item-name">{{ e.firstName }} {{ e.lastName }}</span>
+                            <span class="emp-item-id" *ngIf="e.empId">{{ e.empId }}</span>
+                        </div>
+                        <span class="material-icons emp-check" *ngIf="isEmployeeSelected(e.id)">check_circle</span>
+                    </div>
+                </div>
+
+                <span class="error-msg" *ngIf="errors.assignedUserIds">
+                    <span class="material-icons">error_outline</span>{{ errors.assignedUserIds }}
+                </span>
+            </div>
+
+            <!-- Task Code (edit only) -->
+            <div class="form-group" *ngIf="isEditMode">
+                <label class="form-label">Task Code</label>
+                <div class="input-wrap readonly-field">
+                    <span class="material-icons input-icon">tag</span>
+                    <input class="form-input readonly-input" type="text"
+                        [(ngModel)]="form.taskCode" readonly />
                 </div>
             </div>
 
-            <!-- Start Date + Category -->
+            <!-- Start + End Date -->
             <div class="form-row">
                 <div class="form-group">
                     <label class="form-label">Start Date</label>
@@ -389,7 +378,7 @@
                 <div class="form-group">
                     <label class="form-label">End Date</label>
                     <div class="input-wrap">
-                        <span class="material-icons input-icon">event</span>
+                        <span class="material-icons input-icon">event_available</span>
                         <input class="form-input" type="datetime-local" [(ngModel)]="form.endDate" />
                     </div>
                 </div>
@@ -414,32 +403,24 @@
 <!-- ══════ VIEW MODAL ══════ -->
 <div class="modal-overlay" *ngIf="showViewModal" (click)="closeViewModal()">
     <div class="modal task-view-modal" (click)="$event.stopPropagation()">
-
         <div class="modal-header" *ngIf="viewTask">
             <div class="modal-title-wrap">
                 <span class="material-icons modal-title-icon">task_alt</span>
                 <div>
                     <p class="modal-label">
                         TASK #{{ viewTask.id }}
-                        <span class="task-code-badge lg" *ngIf="viewTask.taskCode">
-                            {{ viewTask.taskCode }}
-                        </span>
+                        <span class="task-code-badge lg" *ngIf="viewTask.taskCode">{{ viewTask.taskCode }}</span>
                     </p>
                     <h2 class="modal-title">{{ viewTask.title }}</h2>
                 </div>
             </div>
-            <button class="modal-close" (click)="closeViewModal()">
-                <span class="material-icons">close</span>
-            </button>
+            <button class="modal-close" (click)="closeViewModal()"><span class="material-icons">close</span></button>
         </div>
 
         <div class="modal-body" *ngIf="viewTask">
-
-            <!-- Status + Priority row -->
             <div class="view-badges-row">
                 <span class="status-pill lg" [ngClass]="getStatusClass(viewTask.status)">
-                    <span class="status-dot"></span>
-                    {{ formatStatus(viewTask.status) }}
+                    <span class="status-dot"></span>{{ formatStatus(viewTask.status) }}
                 </span>
                 <span class="priority-badge lg" [ngClass]="getPriorityClass(viewTask.priority)">
                     <span class="material-icons">{{ getPriorityIcon(viewTask.priority) }}</span>
@@ -450,59 +431,52 @@
                 </span>
             </div>
 
-            <!-- Description -->
             <div class="view-section" *ngIf="viewTask.description">
-                <div class="view-section-title">
-                    <span class="material-icons">description</span> Description
-                </div>
+                <div class="view-section-title"><span class="material-icons">description</span> Description</div>
                 <p class="view-desc">{{ viewTask.description }}</p>
             </div>
 
-            <!-- Details grid -->
             <div class="view-section">
-                <div class="view-section-title">
-                    <span class="material-icons">info</span> Details
-                </div>
+                <div class="view-section-title"><span class="material-icons">info</span> Details</div>
                 <div class="view-grid">
 
-                    <div class="view-item">
+                    <!-- Multi-assignee view — reads assignedUsers: string[] -->
+                    <div class="view-item full-width">
                         <span class="view-label">Assigned To</span>
-                        <span class="view-value">
-                            <div class="assignee-avatar sm inline" *ngIf="viewTask.assignedTo">
-                                {{ getInitial(viewTask.assignedTo) }}
-                            </div>
-                            {{ viewTask.assignedTo || '—' }}
-                        </span>
+                        <div class="view-assignees">
+                            <ng-container *ngIf="viewTask.assignedUsers?.length; else noViewAssignee">
+                                <div class="assignee-chip-view" *ngFor="let name of viewTask.assignedUsers">
+                                    <div class="assignee-avatar sm">{{ getInitial(name) }}</div>
+                                    <span>{{ name }}</span>
+                                </div>
+                            </ng-container>
+                            <ng-template #noViewAssignee><span class="view-value">—</span></ng-template>
+                        </div>
                     </div>
 
                     <div class="view-item">
                         <span class="view-label">Start Date</span>
-                        <span class="view-value"
-                            [class.text-danger]="isOverdue(viewTask.startDate) && viewTask.status !== 'COMPLETED'">
+                        <span class="view-value" [class.text-danger]="isOverdue(viewTask.startDate) && viewTask.status !== 'COMPLETED'">
                             <span class="material-icons view-inline-icon">event</span>
                             {{ viewTask.startDate ? (viewTask.startDate | date:'dd MMM yyyy, hh:mm a') : '—' }}
                         </span>
                     </div>
 
                     <div class="view-item">
-                        <span class="view-label">Task Code</span>
+                        <span class="view-label">End Date</span>
                         <span class="view-value">
-                            <span class="task-code-badge lg" *ngIf="viewTask.taskCode">
-                                {{ viewTask.taskCode }}
-                            </span>
-                            <span *ngIf="!viewTask.taskCode">—</span>
+                            <span class="material-icons view-inline-icon">event_available</span>
+                            {{ viewTask.endDate ? (viewTask.endDate | date:'dd MMM yyyy, hh:mm a') : '—' }}
                         </span>
                     </div>
 
-                    <!-- <div class="view-item">
-                        <span class="view-label">Category</span>
+                    <div class="view-item">
+                        <span class="view-label">Task Code</span>
                         <span class="view-value">
-                            <span class="category-chip" *ngIf="viewTask.category">
-                                {{ viewTask.category }}
-                            </span>
-                            <span *ngIf="!viewTask.category">—</span>
+                            <span class="task-code-badge lg" *ngIf="viewTask.taskCode">{{ viewTask.taskCode }}</span>
+                            <span *ngIf="!viewTask.taskCode">—</span>
                         </span>
-                    </div> -->
+                    </div>
 
                     <div class="view-item">
                         <span class="view-label">Created At</span>
@@ -514,19 +488,15 @@
 
                     <div class="view-item">
                         <span class="view-label">Updated At</span>
-                        <span class="view-value">
-                            {{ viewTask.updatedAt ? (viewTask.updatedAt | date:'dd MMM yyyy, hh:mm a') : '—' }}
-                        </span>
+                        <span class="view-value">{{ viewTask.updatedAt ? (viewTask.updatedAt | date:'dd MMM yyyy, hh:mm a') : '—' }}</span>
                     </div>
 
                     <div class="view-item">
                         <span class="view-label">Created By</span>
                         <span class="view-value">{{ viewTask.createdBy || '—' }}</span>
                     </div>
-
                 </div>
             </div>
-
         </div>
 
         <div class="modal-footer">
