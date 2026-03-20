@@ -279,6 +279,9 @@
   gap: var(--space-3);
   font-weight: 500;
 }
+.error-msg{
+  color:red;
+}
 
 .avatar-mini {
   width: 30px;

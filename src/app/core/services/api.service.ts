@@ -89,31 +89,63 @@ export class ApiService {
   }
 
   getTodayAttendance(): Observable<any> {
-  const today = new Date().toISOString().split('T')[0]; // "2026-03-19"
-  return this.http.post(
-    `${this.baseUrl}/attendance-list?page=1&size=100&date=${today}`,
-    {}   // empty body — all params are @RequestParam query params
-  );
-}
- 
-// Weekly summary — calls attendance-list for each day Mon–Fri
-// Returns array of { day, present, absent } for the chart
-getWeeklyAttendanceSummary(): Observable<any> {
-  const today  = new Date();
-  const monday = new Date(today);
-  monday.setDate(today.getDate() - today.getDay() + 1);
- 
-  const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'];
-  const requests = days.map((day, i) => {
-    const d = new Date(monday);
-    d.setDate(monday.getDate() + i);
-    const dateStr = d.toISOString().split('T')[0];
-    return this.http.post<any>(
-      `${this.baseUrl}/attendance-list?page=1&size=200&date=${dateStr}`, {}
+    const today = new Date().toISOString().split('T')[0]; // "2026-03-19"
+    return this.http.post(
+      `${this.baseUrl}/attendance-list?page=1&size=100&date=${today}`,
+      {}   // empty body — all params are @RequestParam query params
     );
-  });
-  return forkJoin(requests);
+  }
+
+  // Weekly summary — calls attendance-list for each day Mon–Fri
+  // Returns array of { day, present, absent } for the chart
+  getWeeklyAttendanceSummary(): Observable<any> {
+    const today = new Date();
+    const monday = new Date(today);
+    monday.setDate(today.getDate() - today.getDay() + 1);
+
+    const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'];
+    const requests = days.map((day, i) => {
+      const d = new Date(monday);
+      d.setDate(monday.getDate() + i);
+      const dateStr = d.toISOString().split('T')[0];
+      return this.http.post<any>(
+        `${this.baseUrl}/attendance-list?page=1&size=200&date=${dateStr}`, {}
+      );
+    });
+    return forkJoin(requests);
+  }
+
+ // Add these methods to api.service.ts
+
+// ── Base URL getter (for PDF window.open) ─────────────────────
+getBaseUrl(): string {
+  return this.baseUrl;
 }
+
+// ── Generic POST helper (for email endpoint) ──────────────────
+post(endpoint: string, body: any): Observable<any> {
+  return this.http.post(`${this.baseUrl}${endpoint}`, body);
+}
+
+// ── Attendance list — matches your controller exactly ─────────
+// POST /attendance-list?page=1&size=10&userId=3&date=2026-03-01
+getAttendanceList(params: {
+  page?:   number;
+  size?:   number;
+  id?:     number;
+  userId?: number | string;
+  date?:   string;
+} = {}): Observable<any> {
+  const q = new URLSearchParams();
+  if (params.page)   q.set('page',   String(params.page   ?? 1));
+  if (params.size)   q.set('size',   String(params.size   ?? 10));
+  if (params.id)     q.set('id',     String(params.id));
+  if (params.userId) q.set('userId', String(params.userId));
+  if (params.date)   q.set('date',   params.date);
+  return this.http.post(`${this.baseUrl}/attendance-list?${q.toString()}`, {});
+}
+
+
 
   // ══════════════════════════════════════════════════════
   // TASKS
@@ -184,13 +216,13 @@ getWeeklyAttendanceSummary(): Observable<any> {
     return this.http.patch(`${this.chatV1}/${chatId}`, { name, avatar });
   }
 
- saveFcmToken(token: string): Observable<any> {
-        const userId = sessionStorage.getItem('id');
-  return this.http.post(
-    `${this.baseUrl}/chats/fcm-token`,
-    { token, userId }
-  );
-}
+  saveFcmToken(token: string): Observable<any> {
+    const userId = sessionStorage.getItem('id');
+    return this.http.post(
+      `${this.baseUrl}/chats/fcm-token`,
+      { token, userId }
+    );
+  }
 
   removeFcmToken(): Observable<any> {
     return this.http.delete(`${this.chatV1}/fcm-token`);
@@ -198,15 +230,15 @@ getWeeklyAttendanceSummary(): Observable<any> {
 
   // ── File upload ───────────────────────────────────────
 
- uploadChatFile(payload: {
-  chatId:     string;
-  file?:      string;        // base64 — single file
-  fileName?:  string;
-  files?:     string[];      // base64 list — multiple files
-  fileNames?: string[];
-}): Observable<any> {
-  return this.http.post(`${this.baseUrl}/chats/upload-file`, payload);
-}
+  uploadChatFile(payload: {
+    chatId: string;
+    file?: string;        // base64 — single file
+    fileName?: string;
+    files?: string[];      // base64 list — multiple files
+    fileNames?: string[];
+  }): Observable<any> {
+    return this.http.post(`${this.baseUrl}/chats/upload-file`, payload);
+  }
 
   uploadGroupAvatar(
     base64Data: string,
@@ -219,14 +251,28 @@ getWeeklyAttendanceSummary(): Observable<any> {
   }
 
   getChatMessagesWithCursor(chatId: string, beforeMessageId: number, size: number = 30): Observable<any> {
-  return this.http.get(`${this.baseUrl}/chats/messages`, {
-    params: {
-      chatId,
-      beforeMessageId: beforeMessageId.toString(),
-      size: size.toString()
-    }
-  });
-}
+    return this.http.get(`${this.baseUrl}/chats/messages`, {
+      params: {
+        chatId,
+        beforeMessageId: beforeMessageId.toString(),
+        size: size.toString()
+      }
+    });
+  }
+
+  getActivityQuery(params: { module?: string; id?: string; page?: number; size?: number }): Observable<any> {
+    const query = new URLSearchParams();
+    if (params.module) query.set('module', params.module);
+    if (params.id) query.set('id', params.id);
+    if (params.page) query.set('page', String(params.page));
+    if (params.size) query.set('size', String(params.size ?? 50));
+    return this.http.get(`${this.baseUrl}/activity/query?${query.toString()}`);
+  }
+
+  // ── Add comment to a task ─────────────────────────────────────────
+  addTaskComment(taskId: number, comment: string): Observable<any> {
+    return this.http.post(`${this.baseUrl}/task-comment`, { taskId, comment });
+  }
 
 
 }

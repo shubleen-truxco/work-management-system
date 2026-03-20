@@ -1,1 +1,644 @@
-<p>reports works!</p>
+<div class="app-shell">
+  <app-sidebar></app-sidebar>
+  <div class="reports-panel">
+
+    <!-- ══ HEADER ═══════════════════════════════════════ -->
+    <header class="rp-header">
+      <div class="rp-header-left">
+        <span class="page-label">ANALYTICS</span>
+        <h1 class="page-title">Reports</h1>
+      </div>
+      <div class="rp-header-right">
+        <button class="export-btn pdf" (click)="exportPDF()">
+          <span class="material-icons">picture_as_pdf</span> PDF
+        </button>
+        <button class="export-btn email" (click)="exportEmail()">
+          <span class="material-icons">email</span> Email
+        </button>
+        <div class="user-avatar">A</div>
+      </div>
+    </header>
+
+    <div class="rp-body">
+
+      <!-- ══ STAT STRIP ══════════════════════════════════ -->
+      <div class="stat-strip">
+        <div class="stat-card" *ngFor="let s of statCards">
+          <div class="sc-icon" [ngClass]="s.color"><span class="material-icons">{{ s.icon }}</span></div>
+          <div class="sc-info">
+            <span class="sc-val">{{ s.value }}</span>
+            <span class="sc-lbl">{{ s.label }}</span>
+          </div>
+          <span class="sc-sub">{{ s.sub }}</span>
+        </div>
+      </div>
+
+      <!-- ══ REPORT TYPE TABS ═════════════════════════════ -->
+      <div class="report-tabs-bar">
+        <button class="rtab" [class.active]="activeTab === 'task'" (click)="setTab('task')">
+          <span class="material-icons">assignment</span> Task Summary
+        </button>
+        <button class="rtab" [class.active]="activeTab === 'attendance'" (click)="setTab('attendance')">
+          <span class="material-icons">schedule</span> Attendance Report
+        </button>
+        <button class="rtab" [class.active]="activeTab === 'productivity'" (click)="setTab('productivity')">
+          <span class="material-icons">trending_up</span> Productivity Report
+        </button>
+      </div>
+
+      <!-- ══════════════════════════════════════════════════
+           TAB: TASK SUMMARY
+      ═══════════════════════════════════════════════════ -->
+      <ng-container *ngIf="activeTab === 'task'">
+        <div class="filter-bar">
+          <span class="fb-label"><span class="material-icons">filter_list</span> Filters</span>
+          <div class="fb-fields">
+            <select class="fb-input" [(ngModel)]="taskFilters.status">
+              <option *ngFor="let s of statusOptions" [value]="s.value">{{ s.label }}</option>
+            </select>
+            <select class="fb-input" [(ngModel)]="taskFilters.priority">
+              <option *ngFor="let p of priorityOptions" [value]="p.value">{{ p.label }}</option>
+            </select>
+            <div class="fb-search">
+              <span class="material-icons">search</span>
+              <input type="text" placeholder="Search tasks…" [(ngModel)]="taskFilters.search" (keyup.enter)="applyTaskFilters()" />
+            </div>
+          </div>
+          <div class="fb-actions">
+            <button class="fb-apply" (click)="applyTaskFilters()"><span class="material-icons">search</span></button>
+            <button class="fb-reset" (click)="resetTaskFilters()"><span class="material-icons">refresh</span></button>
+          </div>
+        </div>
+
+        <div class="report-split">
+          <!-- LEFT — task table -->
+          <div class="list-pane">
+            <div class="lp-head">
+              <span class="lp-title"><span class="material-icons">list_alt</span> Tasks <span class="lp-ct">{{ filteredTasks.length }}</span></span>
+              <div class="lp-pages" *ngIf="totalPages > 1">
+                <button class="pg-btn" (click)="prevPage()" [disabled]="isFirst"><span class="material-icons">chevron_left</span></button>
+                <span class="pg-txt">{{ currentPage }}/{{ totalPages }}</span>
+                <button class="pg-btn" (click)="nextPage()" [disabled]="isLast"><span class="material-icons">chevron_right</span></button>
+              </div>
+            </div>
+
+            <div class="spin-row" *ngIf="isLoading"><span class="material-icons spin">sync</span></div>
+
+            <div class="tbl-empty" *ngIf="!isLoading && filteredTasks.length === 0">
+              <span class="material-icons">assignment_late</span><p>No tasks found</p>
+            </div>
+
+            <div class="tbl-wrap" *ngIf="!isLoading && filteredTasks.length > 0">
+              <table class="data-table">
+                <thead>
+                  <tr><th>Code</th><th>Task</th><th>Status</th><th>Priority</th><th>Assigned</th><th>End Date</th></tr>
+                </thead>
+                <tbody>
+                  <tr *ngFor="let task of filteredTasks"
+                    [class.row-sel]="selectedTask?.id === task.id"
+                    [class.row-overdue]="isOverdue(task.endDate) && task.status !== 'COMPLETED'"
+                    [class.row-done]="task.status === 'COMPLETED'"
+                    (click)="selectTask(task)">
+                    <td><span class="code-badge" *ngIf="task.taskCode">{{ task.taskCode }}</span><span class="dash" *ngIf="!task.taskCode">—</span></td>
+                    <td class="task-cell">
+                      <span class="tdot" [ngClass]="statusDot(task.status)"></span>
+                      <div><p class="tname">{{ task.title }}</p><p class="tdesc" *ngIf="task.description">{{ task.description | slice:0:50 }}{{ task.description?.length > 50 ? '…' : '' }}</p></div>
+                    </td>
+                    <td>
+                      <span class="spill" [ngClass]="statusClass(task.status)">
+                        <span class="spdot" [ngClass]="statusDot(task.status)"></span>{{ fmtStatus(task.status) }}
+                      </span>
+                    </td>
+                    <td>
+                      <span class="ppill" [ngClass]="priClass(task.priority)">
+                        <span class="material-icons">{{ priIcon(task.priority) }}</span>{{ task.priority }}
+                      </span>
+                    </td>
+                    <td>
+                      <div class="avs" *ngIf="task.assignedUsers?.length">
+                        <div class="av" *ngFor="let u of (task.assignedUsers ?? []).slice(0,3)" [title]="getName(u)">{{ getInitial(u) }}</div>
+                        <span class="av-more" *ngIf="(task.assignedUsers ?? []).length > 3">+{{ task.assignedUsers.length - 3 }}</span>
+                      </div>
+                      <span class="dash" *ngIf="!task.assignedUsers?.length">—</span>
+                    </td>
+                    <td>
+                      <span class="date-val" [class.date-over]="isOverdue(task.endDate) && task.status !== 'COMPLETED'" *ngIf="task.endDate">
+                        {{ task.endDate | date:'dd MMM yyyy' }}
+                      </span>
+                      <span class="dash" *ngIf="!task.endDate">—</span>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- RIGHT — task detail -->
+          <div class="detail-pane" [class.dp-blank]="!selectedTask">
+
+            <div class="dp-placeholder" *ngIf="!selectedTask">
+              <div class="dph-icon"><span class="material-icons">analytics</span></div>
+              <h3>Task Report</h3>
+              <p>Select any task to see full details, activity log and comments</p>
+            </div>
+
+            <ng-container *ngIf="selectedTask">
+
+              <!-- Task header -->
+              <div class="dp-head">
+                <div class="dp-head-row">
+                  <span class="code-badge lg" *ngIf="selectedTask.taskCode">{{ selectedTask.taskCode }}</span>
+                  <span class="spill" [ngClass]="statusClass(selectedTask.status)">
+                    <span class="spdot" [ngClass]="statusDot(selectedTask.status)"></span>{{ fmtStatus(selectedTask.status) }}
+                  </span>
+                  <span class="ppill" [ngClass]="priClass(selectedTask.priority)">
+                    <span class="material-icons">{{ priIcon(selectedTask.priority) }}</span>{{ selectedTask.priority }}
+                  </span>
+                  <span class="over-pill" *ngIf="isOverdue(selectedTask.endDate) && selectedTask.status !== 'COMPLETED'">
+                    <span class="material-icons">warning</span> Overdue
+                  </span>
+                  <!-- COMPLETED BADGE -->
+                  <span class="done-pill" *ngIf="selectedTask.status === 'COMPLETED'">
+                    <span class="material-icons">check_circle</span> Done
+                  </span>
+                </div>
+                <h2 class="dp-title">{{ selectedTask.title }}</h2>
+
+                <!-- Progress bar -->
+                <div class="prog-row"><span class="prog-label">Completion</span><span class="prog-pct">{{ getProgress() }}%</span></div>
+                <div class="prog-track"><div class="prog-fill" [style.width.%]="getProgress()" [style.background]="getProgressColor()"></div></div>
+
+                <!-- Export for this task -->
+                <div class="dp-export-row">
+                  <button class="dp-export pdf" (click)="exportPDF()"><span class="material-icons">picture_as_pdf</span> Export PDF</button>
+                  <button class="dp-export email" (click)="exportEmail()"><span class="material-icons">email</span> Email Report</button>
+                </div>
+              </div>
+
+              <!-- Tabs -->
+              <div class="dp-tabs">
+                <button class="dptab" [class.active]="detailTab === 'summary'" (click)="detailTab = 'summary'">
+                  <span class="material-icons">info</span> Summary
+                </button>
+                <button class="dptab" [class.active]="detailTab === 'activity'" (click)="detailTab = 'activity'">
+                  <span class="material-icons">timeline</span> Activity
+                  <span class="tab-ct" *ngIf="taskLogs.length">{{ taskLogs.length }}</span>
+                </button>
+                <button class="dptab" [class.active]="detailTab === 'comments'" (click)="detailTab = 'comments'">
+                  <span class="material-icons">comment</span> Comments
+                  <span class="tab-ct" *ngIf="taskComments.length">{{ taskComments.length }}</span>
+                </button>
+              </div>
+
+              <div class="dp-body">
+
+                <!-- ─── SUMMARY TAB ─────────────────────────── -->
+                <ng-container *ngIf="detailTab === 'summary'">
+                  <div class="spin-row" *ngIf="isLoadingDetail"><span class="material-icons spin">sync</span></div>
+                  <ng-container *ngIf="!isLoadingDetail">
+
+                    <!-- Completion banner for COMPLETED tasks -->
+                    <div class="done-banner" *ngIf="selectedTask.status === 'COMPLETED'">
+                      <span class="material-icons">verified</span>
+                      <div>
+                        <p class="db-title">Task Completed</p>
+                        <p class="db-sub" *ngIf="completedAt">Finished on {{ completedAt | date:'dd MMM yyyy, hh:mm a' }}</p>
+                      </div>
+                    </div>
+
+                    <!-- Info cards -->
+                    <div class="info-cards">
+                      <div class="ic"><span class="material-icons ic-icon teal">event</span>
+                        <div><p class="ic-lbl">Start</p><p class="ic-val">{{ selectedTask.startDate ? (selectedTask.startDate | date:'dd MMM yyyy') : '—' }}</p><p class="ic-sub" *ngIf="selectedTask.startDate">{{ selectedTask.startDate | date:'hh:mm a' }}</p></div>
+                      </div>
+                      <div class="ic"><span class="material-icons ic-icon" [class.red]="isOverdue(selectedTask.endDate) && selectedTask.status !== 'COMPLETED'" [class.green]="selectedTask.status === 'COMPLETED'">event_available</span>
+                        <div><p class="ic-lbl">End</p><p class="ic-val" [class.text-danger]="isOverdue(selectedTask.endDate) && selectedTask.status !== 'COMPLETED'">{{ selectedTask.endDate ? (selectedTask.endDate | date:'dd MMM yyyy') : '—' }}</p></div>
+                      </div>
+                      <div class="ic"><span class="material-icons ic-icon amber">timer</span>
+                        <div><p class="ic-lbl">Duration</p><p class="ic-val">{{ getDuration() }}</p></div>
+                      </div>
+                      <div class="ic" *ngIf="completedAt"><span class="material-icons ic-icon green">check_circle</span>
+                        <div><p class="ic-lbl">Completed</p><p class="ic-val">{{ completedAt | date:'dd MMM yyyy' }}</p><p class="ic-sub">{{ completedAt | date:'hh:mm a' }}</p></div>
+                      </div>
+                    </div>
+
+                    <!-- Description -->
+                    <div class="dp-section" *ngIf="selectedTask.description">
+                      <p class="ds-label"><span class="material-icons">description</span> Description</p>
+                      <div class="desc-box">{{ selectedTask.description }}</div>
+                    </div>
+
+                    <!-- Assigned users -->
+                    <div class="dp-section" *ngIf="selectedTask.assignedUsers?.length">
+                      <p class="ds-label"><span class="material-icons">group</span> Assigned To <span class="ds-ct">{{ selectedTask.assignedUsers.length }}</span></p>
+                      <div class="assignees">
+                        <div class="assn" *ngFor="let u of selectedTask.assignedUsers">
+                          <div class="assn-av">{{ getInitial(u) }}</div>
+                          <span>{{ getName(u) }}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <!-- Status history -->
+                    <div class="dp-section" *ngIf="statusLogs.length">
+                      <p class="ds-label"><span class="material-icons">sync</span> Status History</p>
+                      <div class="sh-list">
+                        <div class="sh-row" *ngFor="let log of statusLogs">
+                          <div class="sh-dot" [class.sh-done]="log.action==='TASK_COMPLETED'" [class.sh-chg]="log.action!=='TASK_COMPLETED'"></div>
+                          <div><p class="sh-desc">{{ log.description }}</p><p class="sh-meta">{{ log.timeAgo }} · {{ log.createdAt | date:'dd MMM yyyy, hh:mm a' }}<b *ngIf="log.userName"> · {{ log.userName }}</b></p></div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <!-- Meta grid -->
+                    <div class="meta-grid">
+                      <div class="mi"><span class="mi-lbl">Task ID</span><span class="mi-val"><span class="id-badge">#{{ selectedTask.id }}</span></span></div>
+                      <div class="mi"><span class="mi-lbl">Created</span><span class="mi-val">{{ selectedTask.createdAt ? (selectedTask.createdAt | date:'dd MMM yyyy') : '—' }}</span></div>
+                      <div class="mi"><span class="mi-lbl">Updated</span><span class="mi-val">{{ selectedTask.updatedAt ? (selectedTask.updatedAt | date:'dd MMM yyyy') : '—' }}</span></div>
+                      <div class="mi"><span class="mi-lbl">Comments</span><span class="mi-val"><span class="ct-badge">{{ taskComments.length }}</span></span></div>
+                    </div>
+
+                  </ng-container>
+                </ng-container>
+
+                <!-- ─── ACTIVITY TAB ───────────────────────── -->
+                <ng-container *ngIf="detailTab === 'activity'">
+                  <div class="spin-row" *ngIf="isLoadingLogs"><span class="material-icons spin">sync</span></div>
+                  <div class="tab-empty" *ngIf="!isLoadingLogs && taskLogs.length === 0">
+                    <span class="material-icons">history_toggle_off</span><p>No activity yet</p>
+                  </div>
+                  <div class="timeline" *ngIf="!isLoadingLogs && taskLogs.length > 0">
+                    <div class="tl-row" *ngFor="let log of taskLogs; let last = last">
+                      <div class="tl-left">
+                        <div class="tl-icon" [ngClass]="logColor(log.action)"><span class="material-icons">{{ logIcon(log.action) }}</span></div>
+                        <div class="tl-line" *ngIf="!last"></div>
+                      </div>
+                      <div class="tl-card">
+                        <div class="tl-top"><span class="tl-action">{{ fmtAction(log.action) }}</span><span class="tl-ago">{{ log.timeAgo }}</span></div>
+                        <p class="tl-desc">{{ log.description }}</p>
+                        <p class="tl-by" *ngIf="log.userName"><span class="material-icons">person</span> {{ log.userName }}</p>
+                        <div class="tl-diff" *ngIf="log.oldData || log.newData">
+                          <div class="dc" *ngIf="log.oldData"><p class="dl">Before</p><div class="dp2" *ngFor="let k of objKeys(log.oldData)"><span class="dk">{{ k }}</span><span class="dv bv">{{ log.oldData[k] }}</span></div></div>
+                          <span class="material-icons da">arrow_forward</span>
+                          <div class="dc" *ngIf="log.newData"><p class="dl">After</p><div class="dp2" *ngFor="let k of objKeys(log.newData)"><span class="dk">{{ k }}</span><span class="dv av">{{ log.newData[k] }}</span></div></div>
+                        </div>
+                        <p class="tl-date">{{ log.createdAt | date:'dd MMM yyyy, hh:mm a' }}</p>
+                      </div>
+                    </div>
+                  </div>
+                </ng-container>
+
+                <!-- ─── COMMENTS TAB ──────────────────────── -->
+                <ng-container *ngIf="detailTab === 'comments'">
+                  <div class="tab-empty" *ngIf="taskComments.length === 0">
+                    <span class="material-icons">forum</span><p>No comments yet</p>
+                  </div>
+                  <div class="comments-list" *ngIf="taskComments.length > 0">
+                    <div class="cm-row" *ngFor="let c of taskComments">
+                      <div class="cm-av">{{ (c.byName || '?').charAt(0).toUpperCase() }}</div>
+                      <div class="cm-bubble">
+                        <div class="cm-meta"><span class="cm-name">{{ c.byName || 'Unknown' }}</span><span class="cm-time">{{ c.createdAt | date:'dd MMM yyyy, hh:mm a' }}</span></div>
+                        <p class="cm-text">{{ c.comment }}</p>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="add-cm">
+                    <div class="cm-av self">M</div>
+                    <div class="add-inner">
+                      <textarea class="cm-ta" placeholder="Add a comment…" rows="3" [(ngModel)]="newComment"></textarea>
+                      <button class="cm-btn" (click)="submitComment()" [disabled]="!newComment.trim() || isSubmitting">
+                        <span class="material-icons">{{ isSubmitting ? 'hourglass_top' : 'send' }}</span>{{ isSubmitting ? 'Posting…' : 'Post' }}
+                      </button>
+                    </div>
+                  </div>
+                </ng-container>
+
+              </div><!-- /dp-body -->
+            </ng-container>
+          </div><!-- /detail-pane -->
+        </div><!-- /report-split -->
+      </ng-container>
+
+      <!-- ══════════════════════════════════════════════════
+           TAB: ATTENDANCE REPORT
+      ═══════════════════════════════════════════════════ -->
+      <ng-container *ngIf="activeTab === 'attendance'">
+        <div class="filter-bar">
+          <span class="fb-label"><span class="material-icons">filter_list</span> Filters</span>
+          <div class="fb-fields">
+            <select class="fb-input" [(ngModel)]="attFilters.employeeId">
+              <option value="">All Employees</option>
+              <option *ngFor="let e of employees" [value]="e.id">{{ e.firstName }} {{ e.lastName }}</option>
+            </select>
+            <div class="fb-date-range">
+              <input type="date" class="fb-input" [(ngModel)]="attFilters.dateFrom" />
+              <span class="date-sep">—</span>
+              <input type="date" class="fb-input" [(ngModel)]="attFilters.dateTo" />
+            </div>
+          </div>
+          <div class="fb-actions">
+            <button class="fb-apply" (click)="applyAttFilters()"><span class="material-icons">search</span></button>
+            <button class="fb-reset" (click)="resetAttFilters()"><span class="material-icons">refresh</span></button>
+          </div>
+        </div>
+
+        <div class="report-split">
+          <!-- LEFT: attendance list -->
+          <div class="list-pane">
+            <div class="lp-head">
+              <span class="lp-title"><span class="material-icons">schedule</span> Attendance Records <span class="lp-ct">{{ attendanceList.length }}</span></span>
+            </div>
+
+            <div class="spin-row" *ngIf="isLoadingAttendance"><span class="material-icons spin">sync</span></div>
+
+            <div class="tbl-empty" *ngIf="!isLoadingAttendance && attendanceList.length === 0">
+              <span class="material-icons">event_busy</span><p>No attendance records found</p>
+            </div>
+
+            <div class="tbl-wrap" *ngIf="!isLoadingAttendance && attendanceList.length > 0">
+              <table class="data-table">
+                <thead>
+                  <tr><th>Date</th><th>Employee</th><th>Status</th><th>In</th><th>Out</th><th>Hours</th><th>Break</th></tr>
+                </thead>
+                <tbody>
+                  <tr *ngFor="let att of attendanceList"
+                    [class.row-sel]="selectedAttendance?.id === att.id"
+                    (click)="selectAttendance(att)">
+                    <td><span class="date-val">{{ att.attendanceDate | date:'dd MMM yyyy' }}</span></td>
+                    <td><div class="emp-cell"><div class="emp-av">{{ (att.userName || att.user?.name || '?').charAt(0).toUpperCase() }}</div><span>{{ att.userName || att.user?.name || '—' }}</span></div></td>
+                    <td><span class="att-pill" [ngClass]="getAttStatusClass(att.status)">{{ att.status || '—' }}</span></td>
+                    <td><span class="time-val">{{ att.timeIn ? (att.timeIn | date:'hh:mm a') : '—' }}</span></td>
+                    <td><span class="time-val">{{ att.timeOut ? (att.timeOut | date:'hh:mm a') : '—' }}</span></td>
+                    <td>
+                      <span class="hours-val" *ngIf="att.totalWorkHours">
+                        <span class="material-icons">schedule</span>{{ att.totalWorkHours | number:'1.1-1' }}h
+                      </span>
+                      <span class="dash" *ngIf="!att.totalWorkHours">—</span>
+                    </td>
+                    <td><span class="break-val" *ngIf="att.totalBreakMinutes">{{ att.totalBreakMinutes }}m</span><span class="dash" *ngIf="!att.totalBreakMinutes">—</span></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- RIGHT: attendance detail -->
+          <div class="detail-pane" [class.dp-blank]="!selectedAttendance">
+
+            <div class="dp-placeholder" *ngIf="!selectedAttendance">
+              <div class="dph-icon"><span class="material-icons">person_pin_circle</span></div>
+              <h3>Attendance Summary</h3>
+              <p>Select a record to view details, or filter by employee to see their full report</p>
+              <!-- Overall summary when records loaded -->
+              <ng-container *ngIf="attendanceSummary && attendanceList.length > 0">
+                <div class="att-summary-cards">
+                  <div class="asc"><span class="asc-val">{{ attendanceSummary.totalDays }}</span><span class="asc-lbl">Days</span></div>
+                  <div class="asc green"><span class="asc-val">{{ attendanceSummary.present }}</span><span class="asc-lbl">Present</span></div>
+                  <div class="asc red"><span class="asc-val">{{ attendanceSummary.absent }}</span><span class="asc-lbl">Absent</span></div>
+                  <div class="asc blue"><span class="asc-val">{{ attendanceSummary.totalHours }}h</span><span class="asc-lbl">Total Hours</span></div>
+                  <div class="asc amber"><span class="asc-val">{{ attendanceSummary.avgHours }}h</span><span class="asc-lbl">Avg/Day</span></div>
+                </div>
+                <div class="dp-export-row" style="padding: 0 var(--space-5) var(--space-4)">
+                  <button class="dp-export pdf" (click)="exportPDF()"><span class="material-icons">picture_as_pdf</span> Export PDF</button>
+                  <button class="dp-export email" (click)="exportEmail()"><span class="material-icons">email</span> Email Report</button>
+                </div>
+              </ng-container>
+            </div>
+
+            <!-- Selected attendance record detail -->
+            <ng-container *ngIf="selectedAttendance">
+              <div class="dp-head">
+                <div class="dp-head-row">
+                  <span class="att-pill" [ngClass]="getAttStatusClass(selectedAttendance.status)">{{ selectedAttendance.status }}</span>
+                  <span class="date-chip"><span class="material-icons">event</span>{{ selectedAttendance.attendanceDate | date:'EEE, dd MMM yyyy' }}</span>
+                </div>
+                <h2 class="dp-title">{{ selectedAttendance.userName || selectedAttendance.user?.name || 'Employee' }}</h2>
+                <div class="dp-export-row mt-0">
+                  <button class="dp-export pdf" (click)="exportPDF()"><span class="material-icons">picture_as_pdf</span> Export</button>
+                  <button class="dp-export email" (click)="exportEmail()"><span class="material-icons">email</span> Email</button>
+                </div>
+              </div>
+
+              <div class="dp-body">
+                <div class="att-detail-cards">
+                  <div class="adc teal">
+                    <span class="material-icons">login</span>
+                    <div><p class="adc-lbl">Clock In</p><p class="adc-val">{{ selectedAttendance.timeIn ? (selectedAttendance.timeIn | date:'hh:mm a') : '—' }}</p></div>
+                  </div>
+                  <div class="adc green">
+                    <span class="material-icons">logout</span>
+                    <div><p class="adc-lbl">Clock Out</p><p class="adc-val">{{ selectedAttendance.timeOut ? (selectedAttendance.timeOut | date:'hh:mm a') : '—' }}</p></div>
+                  </div>
+                  <div class="adc blue">
+                    <span class="material-icons">schedule</span>
+                    <div><p class="adc-lbl">Work Hours</p><p class="adc-val">{{ selectedAttendance.totalWorkHours ? (selectedAttendance.totalWorkHours | number:'1.1-1') + 'h' : '—' }}</p></div>
+                  </div>
+                  <div class="adc amber">
+                    <span class="material-icons">coffee</span>
+                    <div><p class="adc-lbl">Break</p><p class="adc-val">{{ selectedAttendance.totalBreakMinutes ? selectedAttendance.totalBreakMinutes + ' min' : '—' }}</p></div>
+                  </div>
+                  <div class="adc purple" *ngIf="selectedAttendance.overtimeHours > 0">
+                    <span class="material-icons">more_time</span>
+                    <div><p class="adc-lbl">Overtime</p><p class="adc-val">{{ selectedAttendance.overtimeHours | number:'1.1-1' }}h</p></div>
+                  </div>
+                </div>
+
+                <!-- Work hours progress -->
+                <div class="att-prog-section" *ngIf="selectedAttendance.totalWorkHours">
+                  <div class="prog-row">
+                    <span class="prog-label">Work hours vs 8h target</span>
+                    <span class="prog-pct">{{ selectedAttendance.totalWorkHours | number:'1.1-1' }} / 8h</span>
+                  </div>
+                  <div class="prog-track">
+                    <div class="prog-fill"
+                      [style.width.%]="(selectedAttendance.totalWorkHours / 8) * 100 > 100 ? 100 : (selectedAttendance.totalWorkHours / 8) * 100"
+                      [style.background]="selectedAttendance.totalWorkHours >= 8 ? 'var(--color-success)' : selectedAttendance.totalWorkHours >= 6 ? 'var(--color-teal)' : 'var(--color-amber)'">
+                    </div>
+                  </div>
+                </div>
+
+                <div class="att-meta">
+                  <div class="mi"><span class="mi-lbl">Employee ID</span><span class="mi-val"><span class="id-badge">{{ selectedAttendance.empId || selectedAttendance.userId || '—' }}</span></span></div>
+                  <div class="mi"><span class="mi-lbl">Department</span><span class="mi-val">{{ selectedAttendance.department || '—' }}</span></div>
+                  <div class="mi"><span class="mi-lbl">On Break</span><span class="mi-val">{{ selectedAttendance.onBreak ? 'Yes' : 'No' }}</span></div>
+                </div>
+              </div>
+            </ng-container>
+          </div>
+        </div>
+      </ng-container>
+
+      <!-- ══════════════════════════════════════════════════
+           TAB: PRODUCTIVITY REPORT
+      ═══════════════════════════════════════════════════ -->
+      <ng-container *ngIf="activeTab === 'productivity'">
+        <div class="filter-bar">
+          <span class="fb-label"><span class="material-icons">filter_list</span> Filters</span>
+          <div class="fb-fields">
+            <select class="fb-input" [(ngModel)]="prodFilters.employeeId">
+              <option value="">All Employees</option>
+              <option *ngFor="let e of employees" [value]="e.id">{{ e.firstName }} {{ e.lastName }}</option>
+            </select>
+            <div class="fb-date-range">
+              <input type="date" class="fb-input" [(ngModel)]="prodFilters.dateFrom" />
+              <span class="date-sep">—</span>
+              <input type="date" class="fb-input" [(ngModel)]="prodFilters.dateTo" />
+            </div>
+          </div>
+          <div class="fb-actions">
+            <button class="fb-apply" (click)="applyProdFilters()"><span class="material-icons">search</span></button>
+            <button class="fb-reset" (click)="resetProdFilters()"><span class="material-icons">refresh</span></button>
+          </div>
+        </div>
+
+        <div class="report-split">
+          <!-- LEFT: employee productivity list -->
+          <div class="list-pane">
+            <div class="lp-head">
+              <span class="lp-title"><span class="material-icons">people</span> Employees <span class="lp-ct">{{ productivityList.length }}</span></span>
+            </div>
+
+            <div class="spin-row" *ngIf="isLoading"><span class="material-icons spin">sync</span></div>
+
+            <div class="tbl-empty" *ngIf="!isLoading && productivityList.length === 0">
+              <span class="material-icons">people_outline</span><p>No data found</p>
+            </div>
+
+            <div class="prod-list" *ngIf="!isLoading && productivityList.length > 0">
+              <div class="prod-row"
+                *ngFor="let emp of productivityList"
+                [class.row-sel]="selectedEmployee?.id === emp.id"
+                (click)="selectEmployee(emp)">
+
+                <div class="prod-emp">
+                  <div class="prod-av">{{ getInitial(emp) }}</div>
+                  <div class="prod-info">
+                    <p class="prod-name">{{ emp.name }}</p>
+                    <p class="prod-sub">{{ emp.total }} task{{ emp.total !== 1 ? 's' : '' }} assigned</p>
+                  </div>
+                </div>
+
+                <div class="prod-bars">
+                  <div class="pbar-row">
+                    <span class="pbar-lbl green">Done</span>
+                    <div class="pbar-track"><div class="pbar-fill green" [style.width.%]="prodBar(emp.completed, emp.total)"></div></div>
+                    <span class="pbar-val">{{ emp.completed }}</span>
+                  </div>
+                  <div class="pbar-row">
+                    <span class="pbar-lbl teal">Active</span>
+                    <div class="pbar-track"><div class="pbar-fill teal" [style.width.%]="prodBar(emp.inProgress, emp.total)"></div></div>
+                    <span class="pbar-val">{{ emp.inProgress }}</span>
+                  </div>
+                  <div class="pbar-row" *ngIf="emp.overdue > 0">
+                    <span class="pbar-lbl red">Overdue</span>
+                    <div class="pbar-track"><div class="pbar-fill red" [style.width.%]="prodBar(emp.overdue, emp.total)"></div></div>
+                    <span class="pbar-val">{{ emp.overdue }}</span>
+                  </div>
+                </div>
+
+                <div class="prod-rate" [ngClass]="productivityData?.id === emp.id && productivityData?.completionRate >= 80 ? 'rate-high' : productivityData?.id === emp.id && productivityData?.completionRate >= 50 ? 'rate-med' : ''">
+                  {{ emp.total > 0 ? (emp.completed / emp.total * 100 | number:'1.0-0') : 0 }}%
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- RIGHT: employee productivity detail -->
+          <div class="detail-pane" [class.dp-blank]="!selectedEmployee">
+
+            <div class="dp-placeholder" *ngIf="!selectedEmployee">
+              <div class="dph-icon"><span class="material-icons">trending_up</span></div>
+              <h3>Productivity Report</h3>
+              <p>Select an employee to see their detailed task performance</p>
+            </div>
+
+            <ng-container *ngIf="selectedEmployee && productivityData">
+
+              <div class="dp-head">
+                <div class="dp-head-row">
+                  <div class="emp-av lg">{{ getInitial(selectedEmployee) }}</div>
+                  <div>
+                    <p class="emp-name-lg">{{ selectedEmployee.name }}</p>
+                  </div>
+                </div>
+
+                <!-- Completion rate ring-style display -->
+                <div class="rate-display">
+                  <div class="rate-circle" [style.--rate]="productivityData.completionRate + '%'">
+                    <span class="rate-num">{{ productivityData.completionRate }}%</span>
+                    <span class="rate-sub">completion</span>
+                  </div>
+                  <div class="rate-stats">
+                    <div class="rs-row"><span class="rs-dot green"></span><span class="rs-lbl">Completed</span><span class="rs-val">{{ productivityData.completed }}</span></div>
+                    <div class="rs-row"><span class="rs-dot teal"></span><span class="rs-lbl">In Progress</span><span class="rs-val">{{ productivityData.inProgress }}</span></div>
+                    <div class="rs-row"><span class="rs-dot amber"></span><span class="rs-lbl">Pending</span><span class="rs-val">{{ productivityData.pending }}</span></div>
+                    <div class="rs-row" *ngIf="productivityData.overdue > 0"><span class="rs-dot red"></span><span class="rs-lbl">Overdue</span><span class="rs-val red-val">{{ productivityData.overdue }}</span></div>
+                    <div class="rs-row total"><span class="rs-lbl">Total</span><span class="rs-val"><b>{{ productivityData.total }}</b></span></div>
+                  </div>
+                </div>
+
+                <div class="dp-export-row">
+                  <button class="dp-export pdf" (click)="exportPDF()"><span class="material-icons">picture_as_pdf</span> Export PDF</button>
+                  <button class="dp-export email" (click)="exportEmail()"><span class="material-icons">email</span> Email Report</button>
+                </div>
+              </div>
+
+              <div class="dp-body">
+
+                <!-- Progress bars -->
+                <div class="dp-section">
+                  <p class="ds-label"><span class="material-icons">bar_chart</span> Task Breakdown</p>
+                  <div class="prod-detail-bars">
+                    <div class="pdb-row">
+                      <span class="pdb-lbl">Completed</span>
+                      <div class="pdb-track"><div class="pdb-fill green" [style.width.%]="prodBar(productivityData.completed, productivityData.total)"></div></div>
+                      <span class="pdb-num">{{ productivityData.completed }} / {{ productivityData.total }}</span>
+                    </div>
+                    <div class="pdb-row">
+                      <span class="pdb-lbl">In Progress</span>
+                      <div class="pdb-track"><div class="pdb-fill teal" [style.width.%]="prodBar(productivityData.inProgress, productivityData.total)"></div></div>
+                      <span class="pdb-num">{{ productivityData.inProgress }} / {{ productivityData.total }}</span>
+                    </div>
+                    <div class="pdb-row">
+                      <span class="pdb-lbl">Pending</span>
+                      <div class="pdb-track"><div class="pdb-fill amber" [style.width.%]="prodBar(productivityData.pending, productivityData.total)"></div></div>
+                      <span class="pdb-num">{{ productivityData.pending }} / {{ productivityData.total }}</span>
+                    </div>
+                    <div class="pdb-row" *ngIf="productivityData.overdue > 0">
+                      <span class="pdb-lbl red-lbl">Overdue</span>
+                      <div class="pdb-track"><div class="pdb-fill red" [style.width.%]="prodBar(productivityData.overdue, productivityData.total)"></div></div>
+                      <span class="pdb-num red-lbl">{{ productivityData.overdue }} / {{ productivityData.total }}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Tasks list for this employee -->
+                <div class="dp-section">
+                  <p class="ds-label"><span class="material-icons">assignment</span> Assigned Tasks</p>
+                  <div class="emp-tasks">
+                    <div class="et-row" *ngFor="let task of productivityData.tasks">
+                      <span class="tdot" [ngClass]="statusDot(task.status)"></span>
+                      <div class="et-info">
+                        <p class="et-title">{{ task.title }}</p>
+                        <p class="et-meta">
+                          <span class="code-badge sm" *ngIf="task.taskCode">{{ task.taskCode }}</span>
+                          <span class="ppill sm" [ngClass]="priClass(task.priority)"><span class="material-icons">{{ priIcon(task.priority) }}</span>{{ task.priority }}</span>
+                          <span class="over-pill sm" *ngIf="isOverdue(task.endDate) && task.status !== 'COMPLETED'">Overdue</span>
+                        </p>
+                      </div>
+                      <span class="spill sm" [ngClass]="statusClass(task.status)">
+                        <span class="spdot" [ngClass]="statusDot(task.status)"></span>{{ fmtStatus(task.status) }}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+              </div>
+            </ng-container>
+          </div>
+        </div>
+      </ng-container>
+
+    </div><!-- /rp-body -->
+  </div><!-- /reports-panel -->
+</div>

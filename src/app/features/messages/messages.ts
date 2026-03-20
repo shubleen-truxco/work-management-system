@@ -148,8 +148,8 @@ export class Messages implements OnInit, OnDestroy, AfterViewChecked {
     return {
       id: m.messageId,
       sender: m.type === 'system' ? 'System' : (m.sender?.name ?? ''),
+      senderAvatar: this.buildFileUrl(m.sender?.avatar ?? m.sender?.profile ?? null),
       text,
-      profile: this.buildFileUrl(m.sender?.profile),
       time: this.formatTime(m.createdAt),
       isOwn,
       status: m.status,
@@ -374,35 +374,37 @@ export class Messages implements OnInit, OnDestroy, AfterViewChecked {
     // ── Update chats array ────────────────────────────────────────
     const chat = this.chats.find(c => c.chatId === chatId);
     if (chat?.messages) {
-      chat.messages = chat.messages.map((m: any) =>
-        messageIds.includes(Number(m.id)) ? { ...m, status: 'seen' } : m
-      );
+      chat.messages = chat.messages.map((m: any) => {
+        if (messageIds.includes(Number(m.id))) {
+          console.log(`✅ chat.messages: msg ${m.id} → seen`);
+          return { ...m, status: 'seen' };
+        }
+        return m;
+      });
     }
 
-    // ── Update selectedChat — also reassign the reference ────────
-    if (this.selectedChat?.chatId === chatId) {
-      // Step 1: map to new objects
-      const updatedMessages = (this.selectedChat.messages || []).map((m: any) =>
-        messageIds.includes(Number(m.id)) ? { ...m, status: 'seen' } : m
-      );
-
-      // Step 2: apply detailed updates if present
-      const detailedUpdates: any[] = data.messages ?? [];
-      const finalMessages = detailedUpdates.length > 0
-        ? updatedMessages.map((m: any) => {
-          const u = detailedUpdates.find((d: any) => Number(d.messageId) === Number(m.id));
-          return u ? { ...m, status: u.status, seenBy: u.seenBy, seenCount: u.seenCount } : m;
-        })
-        : updatedMessages;
-
-      // ✅ CRITICAL: reassign selectedChat itself as a new object
-      // This forces Angular to detect the change on the bound property
-      this.selectedChat = { ...this.selectedChat, messages: finalMessages };
-
-      console.log('✅ selectedChat reassigned with updated messages');
+    // ── 2. ✅ KEY FIX: ALSO update selectedChat.messages ──────────
+    // selectedChat is a SEPARATE reference — must update it too
+    if (this.selectedChat?.chatId === chatId && this.selectedChat.messages) {
+      this.selectedChat.messages = this.selectedChat.messages.map((m: any) => {
+        if (messageIds.includes(Number(m.id))) {
+          console.log(`✅ selectedChat.messages: msg ${m.id} → seen`);
+          return { ...m, status: 'seen' };
+        }
+        return m;
+      });
     }
 
-    // ✅ Force change detection
+    const updatedMessages: any[] = data.messages ?? [];
+    if (updatedMessages.length > 0 && this.selectedChat?.chatId === chatId) {
+      this.selectedChat.messages = this.selectedChat.messages.map((m: any) => {
+        const update = updatedMessages.find((u: any) => Number(u.messageId) === Number(m.id));
+        if (update) return { ...m, status: update.status, seenBy: update.seenBy, seenCount: update.seenCount };
+        return m;
+      });
+    }
+
+    // ── 4. ✅ Force Angular to re-render ──────────────────────────
     this.cdr.detectChanges();
   }
 
@@ -410,7 +412,7 @@ export class Messages implements OnInit, OnDestroy, AfterViewChecked {
   // 2. Add trackBy method to messages.ts class
   // ══════════════════════════════════════════════════════
 
-  trackByMsgId(index: number, msg: any): any {
+   trackByMsgId(index: number, msg: any): any {
     return msg.id;
   }
 
@@ -436,12 +438,11 @@ export class Messages implements OnInit, OnDestroy, AfterViewChecked {
           chatId: c.chatId,
           id: c.chatId,
           name: c.name,
-          profile: c.type === 'individual'
-            ? this.buildFileUrl(c.participants?.[0]?.profile)
-            : null,
-          avatar: c.type === 'group'
-            ? this.buildFileUrl(c.avatar)
-            : this.buildFileUrl(c.participants?.[0]?.profile),
+          avatar: this.buildFileUrl(
+            c.avatar                          // top-level (BE sets this for both types)
+            ?? c.participants?.[0]?.avatar    // participant.avatar
+            ?? c.participants?.[0]?.profile   // participant.profile fallback
+          ),
           isGroup: c.type === 'group',
           online: c.participants?.[0]?.isOnline ?? false,
           lastMessage: c.lastMessage?.text ?? '',
@@ -466,7 +467,6 @@ export class Messages implements OnInit, OnDestroy, AfterViewChecked {
             id: String(c.participants[0].userId),
             name: c.participants[0].name,
             role: c.participants[0].role || '',
-            profile: this.buildFileUrl(c.participants[0].profile)
           }));
         this.sortAndFilterChats();
         this.chats
