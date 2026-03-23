@@ -32,6 +32,7 @@ export class EmployeeList implements OnInit {
   editEmpId: number | null = null;
   showViewModal = false;
   viewEmp: any = null;
+  showPassword = false;
 
   // Attendance tab in view modal
   activeViewTab = 'profile';   // 'profile' | 'attendance'
@@ -232,6 +233,7 @@ export class EmployeeList implements OnInit {
     this.viewEmp = emp;
     this.activeViewTab = 'profile';
     this.showViewModal = true;
+    this.showPassword  = false; 
   }
 
   closeViewModal(): void {

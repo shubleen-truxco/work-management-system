@@ -9,8 +9,13 @@
         <h1 class="page-title">Reports</h1>
       </div>
       <div class="rp-header-right">
-        <button class="export-btn pdf" (click)="exportPDF()">
-          <span class="material-icons">picture_as_pdf</span> PDF
+        <button class="export-btn print" (click)="printReport()" [disabled]="isPrinting">
+          <span class="material-icons">{{ isPrinting ? 'hourglass_top' : 'print' }}</span>
+          {{ isPrinting ? 'Printing…' : 'Print' }}
+        </button>
+        <button class="export-btn pdf" (click)="exportPDF()" [disabled]="isExporting">
+          <span class="material-icons">{{ isExporting ? 'hourglass_top' : 'picture_as_pdf' }}</span>
+          {{ isExporting ? 'Exporting…' : 'PDF' }}
         </button>
         <button class="export-btn email" (click)="exportEmail()">
           <span class="material-icons">email</span> Email
@@ -63,11 +68,25 @@
               <span class="material-icons">search</span>
               <input type="text" placeholder="Search tasks…" [(ngModel)]="taskFilters.search" (keyup.enter)="applyTaskFilters()" />
             </div>
+            <!-- Date range for PDF/Print scope -->
+            <div class="fb-date-range">
+              <span class="material-icons date-range-icon">date_range</span>
+              <input type="date" class="fb-input date-input" [(ngModel)]="taskFilters.dateFrom" title="From date" />
+              <span class="date-sep">—</span>
+              <input type="date" class="fb-input date-input" [(ngModel)]="taskFilters.dateTo" title="To date" />
+            </div>
           </div>
           <div class="fb-actions">
-            <button class="fb-apply" (click)="applyTaskFilters()"><span class="material-icons">search</span></button>
-            <button class="fb-reset" (click)="resetTaskFilters()"><span class="material-icons">refresh</span></button>
+            <button class="fb-apply" (click)="applyTaskFilters()" title="Apply filters"><span class="material-icons">search</span></button>
+            <button class="fb-reset" (click)="resetTaskFilters()" title="Reset filters"><span class="material-icons">refresh</span></button>
           </div>
+        </div>
+
+        <!-- Date range active indicator -->
+        <div class="date-range-badge" *ngIf="activeDateRangeLabel">
+          <span class="material-icons">event_note</span>
+          Report scope: <strong>{{ activeDateRangeLabel }}</strong>
+          <span class="drb-note">— applied to PDF &amp; Print</span>
         </div>
 
         <div class="report-split">
@@ -157,7 +176,6 @@
                   <span class="over-pill" *ngIf="isOverdue(selectedTask.endDate) && selectedTask.status !== 'COMPLETED'">
                     <span class="material-icons">warning</span> Overdue
                   </span>
-                  <!-- COMPLETED BADGE -->
                   <span class="done-pill" *ngIf="selectedTask.status === 'COMPLETED'">
                     <span class="material-icons">check_circle</span> Done
                   </span>
@@ -168,10 +186,18 @@
                 <div class="prog-row"><span class="prog-label">Completion</span><span class="prog-pct">{{ getProgress() }}%</span></div>
                 <div class="prog-track"><div class="prog-fill" [style.width.%]="getProgress()" [style.background]="getProgressColor()"></div></div>
 
-                <!-- Export for this task -->
+                <!-- Export row -->
                 <div class="dp-export-row">
-                  <button class="dp-export pdf" (click)="exportPDF()"><span class="material-icons">picture_as_pdf</span> Export PDF</button>
-                  <button class="dp-export email" (click)="exportEmail()"><span class="material-icons">email</span> Email Report</button>
+                  <button class="dp-export print" (click)="printReport()" [disabled]="isPrinting">
+                    <span class="material-icons">{{ isPrinting ? 'hourglass_top' : 'print' }}</span>
+                    {{ isPrinting ? 'Printing…' : 'Print' }}
+                  </button>
+                  <button class="dp-export pdf" (click)="exportPDF()" [disabled]="isExporting">
+                    <span class="material-icons">picture_as_pdf</span> Export PDF
+                  </button>
+                  <button class="dp-export email" (click)="exportEmail()">
+                    <span class="material-icons">email</span> Email Report
+                  </button>
                 </div>
               </div>
 
@@ -197,7 +223,6 @@
                   <div class="spin-row" *ngIf="isLoadingDetail"><span class="material-icons spin">sync</span></div>
                   <ng-container *ngIf="!isLoadingDetail">
 
-                    <!-- Completion banner for COMPLETED tasks -->
                     <div class="done-banner" *ngIf="selectedTask.status === 'COMPLETED'">
                       <span class="material-icons">verified</span>
                       <div>
@@ -206,7 +231,6 @@
                       </div>
                     </div>
 
-                    <!-- Info cards -->
                     <div class="info-cards">
                       <div class="ic"><span class="material-icons ic-icon teal">event</span>
                         <div><p class="ic-lbl">Start</p><p class="ic-val">{{ selectedTask.startDate ? (selectedTask.startDate | date:'dd MMM yyyy') : '—' }}</p><p class="ic-sub" *ngIf="selectedTask.startDate">{{ selectedTask.startDate | date:'hh:mm a' }}</p></div>
@@ -222,13 +246,11 @@
                       </div>
                     </div>
 
-                    <!-- Description -->
                     <div class="dp-section" *ngIf="selectedTask.description">
                       <p class="ds-label"><span class="material-icons">description</span> Description</p>
                       <div class="desc-box">{{ selectedTask.description }}</div>
                     </div>
 
-                    <!-- Assigned users -->
                     <div class="dp-section" *ngIf="selectedTask.assignedUsers?.length">
                       <p class="ds-label"><span class="material-icons">group</span> Assigned To <span class="ds-ct">{{ selectedTask.assignedUsers.length }}</span></p>
                       <div class="assignees">
@@ -239,7 +261,6 @@
                       </div>
                     </div>
 
-                    <!-- Status history -->
                     <div class="dp-section" *ngIf="statusLogs.length">
                       <p class="ds-label"><span class="material-icons">sync</span> Status History</p>
                       <div class="sh-list">
@@ -250,7 +271,6 @@
                       </div>
                     </div>
 
-                    <!-- Meta grid -->
                     <div class="meta-grid">
                       <div class="mi"><span class="mi-lbl">Task ID</span><span class="mi-val"><span class="id-badge">#{{ selectedTask.id }}</span></span></div>
                       <div class="mi"><span class="mi-lbl">Created</span><span class="mi-val">{{ selectedTask.createdAt ? (selectedTask.createdAt | date:'dd MMM yyyy') : '—' }}</span></div>
@@ -330,16 +350,25 @@
               <option value="">All Employees</option>
               <option *ngFor="let e of employees" [value]="e.id">{{ e.firstName }} {{ e.lastName }}</option>
             </select>
+            <!-- Date range — filters list AND scopes PDF/Print -->
             <div class="fb-date-range">
-              <input type="date" class="fb-input" [(ngModel)]="attFilters.dateFrom" />
+              <span class="material-icons date-range-icon">date_range</span>
+              <input type="date" class="fb-input date-input" [(ngModel)]="attFilters.dateFrom" title="From date" />
               <span class="date-sep">—</span>
-              <input type="date" class="fb-input" [(ngModel)]="attFilters.dateTo" />
+              <input type="date" class="fb-input date-input" [(ngModel)]="attFilters.dateTo" title="To date" />
             </div>
           </div>
           <div class="fb-actions">
-            <button class="fb-apply" (click)="applyAttFilters()"><span class="material-icons">search</span></button>
-            <button class="fb-reset" (click)="resetAttFilters()"><span class="material-icons">refresh</span></button>
+            <button class="fb-apply" (click)="applyAttFilters()" title="Apply filters"><span class="material-icons">search</span></button>
+            <button class="fb-reset" (click)="resetAttFilters()" title="Reset filters"><span class="material-icons">refresh</span></button>
           </div>
+        </div>
+
+        <!-- Date range active indicator -->
+        <div class="date-range-badge" *ngIf="activeDateRangeLabel">
+          <span class="material-icons">event_note</span>
+          Report scope: <strong>{{ activeDateRangeLabel }}</strong>
+          <span class="drb-note">— applied to PDF &amp; Print</span>
         </div>
 
         <div class="report-split">
@@ -389,7 +418,6 @@
               <div class="dph-icon"><span class="material-icons">person_pin_circle</span></div>
               <h3>Attendance Summary</h3>
               <p>Select a record to view details, or filter by employee to see their full report</p>
-              <!-- Overall summary when records loaded -->
               <ng-container *ngIf="attendanceSummary && attendanceList.length > 0">
                 <div class="att-summary-cards">
                   <div class="asc"><span class="asc-val">{{ attendanceSummary.totalDays }}</span><span class="asc-lbl">Days</span></div>
@@ -399,8 +427,16 @@
                   <div class="asc amber"><span class="asc-val">{{ attendanceSummary.avgHours }}h</span><span class="asc-lbl">Avg/Day</span></div>
                 </div>
                 <div class="dp-export-row" style="padding: 0 var(--space-5) var(--space-4)">
-                  <button class="dp-export pdf" (click)="exportPDF()"><span class="material-icons">picture_as_pdf</span> Export PDF</button>
-                  <button class="dp-export email" (click)="exportEmail()"><span class="material-icons">email</span> Email Report</button>
+                  <button class="dp-export print" (click)="printReport()" [disabled]="isPrinting">
+                    <span class="material-icons">{{ isPrinting ? 'hourglass_top' : 'print' }}</span>
+                    {{ isPrinting ? 'Printing…' : 'Print' }}
+                  </button>
+                  <button class="dp-export pdf" (click)="exportPDF()" [disabled]="isExporting">
+                    <span class="material-icons">picture_as_pdf</span> Export PDF
+                  </button>
+                  <button class="dp-export email" (click)="exportEmail()">
+                    <span class="material-icons">email</span> Email Report
+                  </button>
                 </div>
               </ng-container>
             </div>
@@ -414,8 +450,16 @@
                 </div>
                 <h2 class="dp-title">{{ selectedAttendance.userName || selectedAttendance.user?.name || 'Employee' }}</h2>
                 <div class="dp-export-row mt-0">
-                  <button class="dp-export pdf" (click)="exportPDF()"><span class="material-icons">picture_as_pdf</span> Export</button>
-                  <button class="dp-export email" (click)="exportEmail()"><span class="material-icons">email</span> Email</button>
+                  <button class="dp-export print" (click)="printReport()" [disabled]="isPrinting">
+                    <span class="material-icons">{{ isPrinting ? 'hourglass_top' : 'print' }}</span>
+                    {{ isPrinting ? 'Printing…' : 'Print' }}
+                  </button>
+                  <button class="dp-export pdf" (click)="exportPDF()" [disabled]="isExporting">
+                    <span class="material-icons">picture_as_pdf</span> Export
+                  </button>
+                  <button class="dp-export email" (click)="exportEmail()">
+                    <span class="material-icons">email</span> Email
+                  </button>
                 </div>
               </div>
 
@@ -443,7 +487,6 @@
                   </div>
                 </div>
 
-                <!-- Work hours progress -->
                 <div class="att-prog-section" *ngIf="selectedAttendance.totalWorkHours">
                   <div class="prog-row">
                     <span class="prog-label">Work hours vs 8h target</span>
@@ -479,16 +522,25 @@
               <option value="">All Employees</option>
               <option *ngFor="let e of employees" [value]="e.id">{{ e.firstName }} {{ e.lastName }}</option>
             </select>
+            <!-- Date range — scopes PDF/Print to specific period -->
             <div class="fb-date-range">
-              <input type="date" class="fb-input" [(ngModel)]="prodFilters.dateFrom" />
+              <span class="material-icons date-range-icon">date_range</span>
+              <input type="date" class="fb-input date-input" [(ngModel)]="prodFilters.dateFrom" title="From date" />
               <span class="date-sep">—</span>
-              <input type="date" class="fb-input" [(ngModel)]="prodFilters.dateTo" />
+              <input type="date" class="fb-input date-input" [(ngModel)]="prodFilters.dateTo" title="To date" />
             </div>
           </div>
           <div class="fb-actions">
-            <button class="fb-apply" (click)="applyProdFilters()"><span class="material-icons">search</span></button>
-            <button class="fb-reset" (click)="resetProdFilters()"><span class="material-icons">refresh</span></button>
+            <button class="fb-apply" (click)="applyProdFilters()" title="Apply filters"><span class="material-icons">search</span></button>
+            <button class="fb-reset" (click)="resetProdFilters()" title="Reset filters"><span class="material-icons">refresh</span></button>
           </div>
+        </div>
+
+        <!-- Date range active indicator -->
+        <div class="date-range-badge" *ngIf="activeDateRangeLabel">
+          <span class="material-icons">event_note</span>
+          Report scope: <strong>{{ activeDateRangeLabel }}</strong>
+          <span class="drb-note">— applied to PDF &amp; Print</span>
         </div>
 
         <div class="report-split">
@@ -562,7 +614,6 @@
                   </div>
                 </div>
 
-                <!-- Completion rate ring-style display -->
                 <div class="rate-display">
                   <div class="rate-circle" [style.--rate]="productivityData.completionRate + '%'">
                     <span class="rate-num">{{ productivityData.completionRate }}%</span>
@@ -578,14 +629,21 @@
                 </div>
 
                 <div class="dp-export-row">
-                  <button class="dp-export pdf" (click)="exportPDF()"><span class="material-icons">picture_as_pdf</span> Export PDF</button>
-                  <button class="dp-export email" (click)="exportEmail()"><span class="material-icons">email</span> Email Report</button>
+                  <button class="dp-export print" (click)="printReport()" [disabled]="isPrinting">
+                    <span class="material-icons">{{ isPrinting ? 'hourglass_top' : 'print' }}</span>
+                    {{ isPrinting ? 'Printing…' : 'Print' }}
+                  </button>
+                  <button class="dp-export pdf" (click)="exportPDF()" [disabled]="isExporting">
+                    <span class="material-icons">picture_as_pdf</span> Export PDF
+                  </button>
+                  <button class="dp-export email" (click)="exportEmail()">
+                    <span class="material-icons">email</span> Email Report
+                  </button>
                 </div>
               </div>
 
               <div class="dp-body">
 
-                <!-- Progress bars -->
                 <div class="dp-section">
                   <p class="ds-label"><span class="material-icons">bar_chart</span> Task Breakdown</p>
                   <div class="prod-detail-bars">
@@ -612,7 +670,6 @@
                   </div>
                 </div>
 
-                <!-- Tasks list for this employee -->
                 <div class="dp-section">
                   <p class="ds-label"><span class="material-icons">assignment</span> Assigned Tasks</p>
                   <div class="emp-tasks">

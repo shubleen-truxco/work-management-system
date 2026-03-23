@@ -231,7 +231,8 @@
             <label class="form-label">Employee ID</label>
             <div class="input-wrap">
               <span class="material-icons input-icon">tag</span>
-              <input class="form-input" type="text" placeholder="EMP001" [(ngModel)]="form.empId" />
+              <input class="form-input" type="text" placeholder="EMP001" [(ngModel)]="form.empId" readonly />
+              <span class="lock-icon material-icons">lock</span>
             </div>
           </div>
           <div class="form-group">
@@ -378,6 +379,24 @@
               <div class="view-item">
                 <span class="view-label">Employee ID</span>
                 <span class="view-value">{{ viewEmp.empId || '—' }}</span>
+              </div>
+            </div>
+               <div class="view-item full-width">
+                <span class="view-label">Password</span>
+                <div class="view-password-wrap">
+                  <input
+                    class="view-password-input"
+                    [type]="showPassword ? 'text' : 'password'"
+                    [value]="viewEmp.rawPassword || '••••••••••'"
+                    readonly />
+                  <button class="view-password-toggle" (click)="showPassword = !showPassword" type="button">
+                    <span class="material-icons">{{ showPassword ? 'visibility_off' : 'visibility' }}</span>
+                  </button>
+                </div>
+                <span class="view-password-hint" *ngIf="!viewEmp.rawPassword">
+                  <span class="material-icons">info</span>
+                  Password is encrypted — shown only when set by admin
+                </span>
               </div>
             </div>
           </div>

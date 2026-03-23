@@ -20,7 +20,8 @@
 
             <!-- Stats -->
             <div class="stats-row">
-                <div class="stat-card" *ngFor="let s of statCards" [class.active-stat]="activeFilter === s.filter"
+                <div class="stat-card" *ngFor="let s of statCards"
+                    [class.active-stat]="activeFilter === s.filter"
                     (click)="setFilter(s.filter)">
                     <div class="stat-icon-wrap" [ngClass]="s.color">
                         <span class="material-icons">{{ s.icon }}</span>
@@ -37,24 +38,24 @@
             <div class="controls-bar">
                 <div class="filter-tabs">
                     <button class="filter-tab" [class.active]="activeFilter === ''" (click)="setFilter('')">All</button>
-                    <button class="filter-tab" *ngFor="let s of statusOptions" [class.active]="activeFilter === s.value"
-                        (click)="setFilter(s.value)">
+                    <button class="filter-tab" *ngFor="let s of statusOptions"
+                        [class.active]="activeFilter === s.value" (click)="setFilter(s.value)">
                         <span class="tab-dot" [ngClass]="s.color"></span>{{ s.label }}
                     </button>
                 </div>
                 <div class="controls-right">
                     <div class="search-wrap">
                         <span class="material-icons search-icon">search</span>
-                        <input type="text" class="search-input" placeholder="Search tasks..." [(ngModel)]="searchText"
-                            (input)="onSearch()" />
+                        <input type="text" class="search-input" placeholder="Search tasks..."
+                            [(ngModel)]="searchText" (input)="onSearch()" />
                     </div>
                     <div class="view-toggle">
-                        <button class="view-btn" [class.active]="viewMode === 'list'" (click)="viewMode = 'list'"
-                            title="List view">
+                        <button class="view-btn" [class.active]="viewMode === 'list'"
+                            (click)="viewMode = 'list'" title="List view">
                             <span class="material-icons">view_list</span>
                         </button>
-                        <button class="view-btn" [class.active]="viewMode === 'board'" (click)="viewMode = 'board'"
-                            title="Board view">
+                        <button class="view-btn" [class.active]="viewMode === 'board'"
+                            (click)="viewMode = 'board'" title="Board view">
                             <span class="material-icons">view_kanban</span>
                         </button>
                     </div>
@@ -79,15 +80,9 @@
                         <table class="task-table">
                             <thead>
                                 <tr>
-                                    <th>#</th>
-                                    <th>Task Code</th>
-                                    <th>Task</th>
-                                    <th>Status</th>
-                                    <th>Priority</th>
-                                    <th>Assigned To</th>
-                                    <th>Start Date</th>
-                                    <th>End Date</th>
-                                    <th>Actions</th>
+                                    <th>#</th><th>Task Code</th><th>Task</th>
+                                    <th>Status</th><th>Priority</th><th>Assigned To</th>
+                                    <th>Start Date</th><th>End Date</th><th>Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -96,8 +91,7 @@
 
                                     <td class="col-id"><span class="task-id-badge">#{{ task.id }}</span></td>
 
-                                    <td><span class="task-code-badge" *ngIf="task.taskCode">{{ task.taskCode }}</span>
-                                    </td>
+                                    <td><span class="task-code-badge" *ngIf="task.taskCode">{{ task.taskCode }}</span></td>
 
                                     <td class="col-task">
                                         <div class="task-title-wrap">
@@ -105,8 +99,7 @@
                                             <div>
                                                 <p class="tbl-task-title">{{ task.title }}</p>
                                                 <p class="tbl-task-desc" *ngIf="task.description">
-                                                    {{ task.description | slice:0:60 }}{{ task.description?.length > 60
-                                                    ? '...' : '' }}
+                                                    {{ task.description | slice:0:60 }}{{ task.description?.length > 60 ? '...' : '' }}
                                                 </p>
                                             </div>
                                         </div>
@@ -125,7 +118,6 @@
                                         </span>
                                     </td>
 
-                                    <!-- ✅ assignedUsers is [{id,name}] -->
                                     <td class="col-assignee">
                                         <ng-container *ngIf="task.assignedUsers?.length; else noAssignee">
                                             <div class="assignee-stack">
@@ -153,7 +145,6 @@
                                     <td class="col-due">
                                         <div class="due-cell" *ngIf="task.startDate"
                                             [class.overdue-due]="isOverdue(task.startDate) && task.status !== 'COMPLETED'">
-                                            <span class="material-icons due-icon">event</span>
                                             <div class="due-date-wrap">
                                                 <span class="due-date">{{ task.startDate | date:'dd MMM yyyy' }}</span>
                                                 <span class="due-time">{{ task.startDate | date:'hh:mm a' }}</span>
@@ -169,7 +160,6 @@
                                     <td class="col-due">
                                         <div class="due-cell" *ngIf="task.endDate"
                                             [class.overdue-due]="isOverdue(task.endDate) && task.status !== 'COMPLETED'">
-                                            <span class="material-icons due-icon">event_available</span>
                                             <div class="due-date-wrap">
                                                 <span class="due-date">{{ task.endDate | date:'dd MMM yyyy' }}</span>
                                                 <span class="due-time">{{ task.endDate | date:'hh:mm a' }}</span>
@@ -188,7 +178,6 @@
                                             </button>
                                         </div>
                                     </td>
-
                                 </tr>
                             </tbody>
                         </table>
@@ -221,7 +210,6 @@
                                     {{ task.description | slice:0:60 }}...
                                 </p>
                                 <div class="board-task-footer">
-                                    <!-- ✅ first assignee initial from {id,name} object -->
                                     <div class="assignee-avatar sm" *ngIf="task.assignedUsers?.length">
                                         {{ getInitial(task.assignedUsers[0]) }}
                                     </div>
@@ -271,7 +259,9 @@
                     <h2 class="modal-title">{{ isEditMode ? 'Update Task' : 'Create Task' }}</h2>
                 </div>
             </div>
-            <button class="modal-close" (click)="closeModal()"><span class="material-icons">close</span></button>
+            <button class="modal-close" (click)="closeModal()">
+                <span class="material-icons">close</span>
+            </button>
         </div>
 
         <div class="modal-body">
@@ -281,8 +271,8 @@
                 <label class="form-label">Task Title <span class="required">*</span></label>
                 <div class="input-wrap" [class.input-error]="errors.title">
                     <span class="material-icons input-icon">title</span>
-                    <input class="form-input" type="text" placeholder="Enter task title" [(ngModel)]="form.title"
-                        (input)="clearError('title')" />
+                    <input class="form-input" type="text" placeholder="Enter task title"
+                        [(ngModel)]="form.title" (input)="clearError('title')" />
                 </div>
                 <span class="error-msg" *ngIf="errors.title">
                     <span class="material-icons">error_outline</span>{{ errors.title }}
@@ -293,8 +283,8 @@
             <div class="form-group">
                 <label class="form-label">Description</label>
                 <div class="textarea-wrap">
-                    <textarea class="form-textarea" placeholder="Describe the task..." rows="3"
-                        [(ngModel)]="form.description"></textarea>
+                    <textarea class="form-textarea" placeholder="Describe the task..."
+                        rows="3" [(ngModel)]="form.description"></textarea>
                 </div>
             </div>
 
@@ -325,7 +315,6 @@
             <!-- Multi-assign -->
             <div class="form-group">
                 <label class="form-label">Assign To <span class="required">*</span></label>
-
                 <div class="chips-row" *ngIf="form.assignedUserIds.length > 0">
                     <div class="emp-chip" *ngFor="let id of form.assignedUserIds">
                         <div class="chip-avatar">{{ getEmployeeInitial(id) }}</div>
@@ -335,22 +324,19 @@
                         </button>
                     </div>
                 </div>
-
                 <div class="multi-select-container" [class.has-error]="errors.assignedUserIds"
                     (click)="showEmployeeDropdown = true">
                     <span class="material-icons input-icon-abs">person_search</span>
                     <input class="form-input multi-input" type="text"
                         [placeholder]="form.assignedUserIds.length ? 'Add more...' : 'Search employees...'"
-                        [(ngModel)]="employeeSearch" (focus)="showEmployeeDropdown = true" (blur)="closeDropdown()"
-                        autocomplete="off" />
+                        [(ngModel)]="employeeSearch"
+                        (focus)="showEmployeeDropdown = true"
+                        (blur)="closeDropdown()" autocomplete="off" />
                     <span class="material-icons dropdown-arrow-icon"
                         [class.rotated]="showEmployeeDropdown">expand_more</span>
                 </div>
-
                 <div class="emp-dropdown" *ngIf="showEmployeeDropdown">
-                    <div class="emp-dropdown-empty" *ngIf="filteredEmployees.length === 0">
-                        No employees found
-                    </div>
+                    <div class="emp-dropdown-empty" *ngIf="filteredEmployees.length === 0">No employees found</div>
                     <div class="emp-dropdown-item" *ngFor="let e of filteredEmployees"
                         [class.selected]="isEmployeeSelected(e.id)"
                         (mousedown)="$event.preventDefault(); toggleEmployee(e.id)">
@@ -362,7 +348,6 @@
                         <span class="material-icons emp-check" *ngIf="isEmployeeSelected(e.id)">check_circle</span>
                     </div>
                 </div>
-
                 <span class="error-msg" *ngIf="errors.assignedUserIds">
                     <span class="material-icons">error_outline</span>{{ errors.assignedUserIds }}
                 </span>
@@ -400,6 +385,32 @@
                     <span class="error-msg" *ngIf="errors.endDate">
                         <span class="material-icons">error_outline</span>{{ errors.endDate }}
                     </span>
+                </div>
+            </div>
+
+            <!-- Comment (optional) -->
+            <div class="form-group comment-field-group">
+                <label class="form-label">
+                    <span class="material-icons comment-label-icon">comment</span>
+                    {{ isEditMode ? 'Add Comment' : 'Initial Comment' }}
+                    <span class="form-label-hint">Optional</span>
+                </label>
+                <div class="comment-input-wrap">
+                    <div class="comment-input-avatar">A</div>
+                    <div class="comment-textarea-outer" [class.focused]="newCommentFocused">
+                        <textarea class="comment-textarea"
+                            [placeholder]="isEditMode
+                                ? 'Add a follow-up comment...'
+                                : 'Add an initial note or instruction...'"
+                            rows="3"
+                            [(ngModel)]="form.comment"
+                            (focus)="newCommentFocused = true"
+                            (blur)="newCommentFocused = false">
+                        </textarea>
+                        <div class="comment-char-count" *ngIf="form.comment?.length">
+                            {{ form.comment.length }} chars
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -441,6 +452,7 @@
 
         <div class="modal-body" *ngIf="viewTask">
 
+            <!-- Badges -->
             <div class="view-badges-row">
                 <span class="status-pill lg" [ngClass]="getStatusClass(viewTask.status)">
                     <span class="status-dot"></span>{{ formatStatus(viewTask.status) }}
@@ -449,11 +461,13 @@
                     <span class="material-icons">{{ getPriorityIcon(viewTask.priority) }}</span>
                     {{ viewTask.priority }} Priority
                 </span>
-                <span class="overdue-chip lg" *ngIf="isOverdue(viewTask.startDate) && viewTask.status !== 'COMPLETED'">
+                <span class="overdue-chip lg"
+                    *ngIf="isOverdue(viewTask.startDate) && viewTask.status !== 'COMPLETED'">
                     <span class="material-icons">warning</span> Overdue
                 </span>
             </div>
 
+            <!-- Description -->
             <div class="view-section" *ngIf="viewTask.description">
                 <div class="view-section-title">
                     <span class="material-icons">description</span> Description
@@ -461,13 +475,13 @@
                 <p class="view-desc">{{ viewTask.description }}</p>
             </div>
 
+            <!-- Details grid -->
             <div class="view-section">
                 <div class="view-section-title">
                     <span class="material-icons">info</span> Details
                 </div>
                 <div class="view-grid">
 
-                    <!-- ✅ assignedUsers [{id,name}] -->
                     <div class="view-item full-width">
                         <span class="view-label">Assigned To</span>
                         <div class="view-assignees">
@@ -477,9 +491,7 @@
                                     <span>{{ getAssigneeName(u) }}</span>
                                 </div>
                             </ng-container>
-                            <ng-template #noViewAssignee>
-                                <span class="view-value">—</span>
-                            </ng-template>
+                            <ng-template #noViewAssignee><span class="view-value">—</span></ng-template>
                         </div>
                     </div>
 
@@ -530,6 +542,102 @@
 
                 </div>
             </div>
+
+            <!-- ══ COMMENTS ══════════════════════════════════ -->
+            <div class="view-section comments-section">
+
+                <div class="view-section-title">
+                    <span class="material-icons">forum</span> Comments
+                    <span class="comments-count" *ngIf="viewTask.comments?.length">
+                        {{ viewTask.comments.length }}
+                    </span>
+                </div>
+
+                <!-- Existing comments -->
+                <div class="comments-list" *ngIf="viewTask.comments?.length">
+                    <div class="comment-row" *ngFor="let c of viewTask.comments; let i = index"
+                         [style.--av-index]="i">
+                        <div class="comment-avatar">{{ (c.byName || '?').charAt(0).toUpperCase() }}</div>
+
+                        <div class="comment-bubble" [class.editing]="editingCommentId === c.id">
+
+                            <!-- READ mode -->
+                            <ng-container *ngIf="editingCommentId !== c.id">
+                                <div class="comment-meta">
+                                    <span class="comment-author">{{ c.byName || 'Unknown' }}</span>
+                                    <span class="comment-sep">·</span>
+                                    <span class="comment-time">{{ c.createdAt | date:'dd MMM yyyy, hh:mm a' }}</span>
+                                    <div class="comment-actions">
+                                        <button class="cm-action-btn" title="Edit" (click)="startEditComment(c)">
+                                            <span class="material-icons">edit</span>
+                                        </button>
+                                    </div>
+                                </div>
+                                <p class="comment-text">{{ c.comment }}</p>
+                            </ng-container>
+
+                            <!-- EDIT mode -->
+                            <ng-container *ngIf="editingCommentId === c.id">
+                                <div class="comment-edit-wrap">
+                                    <textarea class="comment-edit-ta" rows="3"
+                                        placeholder="Edit your comment..."
+                                        [(ngModel)]="editingCommentText">
+                                    </textarea>
+                                    <div class="comment-edit-actions">
+                                        <button class="cm-cancel-btn" (click)="cancelEditComment()">
+                                            <span class="material-icons">close</span> Cancel
+                                        </button>
+                                        <button class="cm-save-btn"
+                                            [disabled]="!editingCommentText.trim() || isSavingComment"
+                                            (click)="saveEditedComment(c.id)">
+                                            <span class="material-icons">
+                                                {{ isSavingComment ? 'hourglass_top' : 'check' }}
+                                            </span>
+                                            {{ isSavingComment ? 'Saving...' : 'Save' }}
+                                        </button>
+                                    </div>
+                                </div>
+                            </ng-container>
+
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Empty -->
+                <div class="comments-empty" *ngIf="!viewTask.comments?.length">
+                    <span class="material-icons">chat_bubble_outline</span>
+                    <p>No comments yet — be the first to add one</p>
+                </div>
+
+                <!-- Add comment — always visible -->
+                <div class="add-comment-row">
+                    <div class="comment-avatar new-comment-av">A</div>
+                    <div class="add-comment-outer" [class.focused]="newCommentFocused">
+                        <textarea class="add-comment-ta" rows="2"
+                            placeholder="Write a comment..."
+                            [(ngModel)]="newComment"
+                            (focus)="newCommentFocused = true"
+                            (blur)="newCommentFocused = false"
+                            (keydown.control.enter)="submitComment()"
+                            (keydown.meta.enter)="submitComment()">
+                        </textarea>
+                        <div class="add-comment-footer">
+                            <span class="add-comment-hint">Ctrl + Enter to send</span>
+                            <button class="add-comment-btn"
+                                [disabled]="!newComment.trim() || isSubmittingComment"
+                                (click)="submitComment()">
+                                <span class="material-icons">
+                                    {{ isSubmittingComment ? 'hourglass_top' : 'send' }}
+                                </span>
+                                {{ isSubmittingComment ? 'Posting...' : 'Post' }}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+            <!-- ══ END COMMENTS ══════════════════════════════ -->
+
         </div>
 
         <div class="modal-footer">

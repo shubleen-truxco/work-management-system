@@ -147,13 +147,20 @@ getAttendanceList(params: {
 
 
 
+
   // ══════════════════════════════════════════════════════
   // TASKS
   // ══════════════════════════════════════════════════════
 
-  createOrUpdateTask(payload: any): Observable<any> {
-    return this.http.post(`${this.baseUrl}/create-update-task`, payload);
-  }
+createOrUpdateTask(dto: any, comment?: string): Observable<any> {
+  const params = comment?.trim()
+    ? `?comment=${encodeURIComponent(comment.trim())}`
+    : '';
+  return this.http.post(
+    `${this.baseUrl}/create-update-task${params}`,
+    dto,
+  );
+}
 
   getTaskList(payload: any): Observable<any> {
     return this.http.post(`${this.baseUrl}/task-list`, payload);
