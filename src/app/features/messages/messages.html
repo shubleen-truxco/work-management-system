@@ -166,28 +166,31 @@
             <span>Loading messages...</span>
           </div>
 
-          <div class="date-divider" *ngIf="!isLoadingHistory"><span>Today</span></div>
+          <!-- ✅ NO hardcoded "Today" divider here anymore -->
 
           <ng-container *ngIf="!isLoadingHistory">
             <ng-container *ngFor="let msg of selectedChat.messages; trackBy: trackByMsgId">
 
-              <div class="date-divider" *ngIf="msg.dateDivider">
+              <!-- ── DATE DIVIDER ── -->
+              <div class="date-divider" *ngIf="msg.isDivider">
                 <span>{{ msg.dateDivider }}</span>
               </div>
 
               <!-- ── SYSTEM MESSAGE ── -->
-              <div class="system-message-row" *ngIf="msg.type === 'system'">
+              <div class="system-message-row" *ngIf="!msg.isDivider && msg.type === 'system'">
                 <span class="system-message-text">{{ msg.text }}</span>
               </div>
 
-              <!-- ── RECEIVED MESSAGE ── -->
-              <div class="message-row received" *ngIf="!msg.isOwn && msg.type !== 'system'">
-                <div class="msg-avatar">{{ (msg.sender || '?').charAt(0).toUpperCase() }}</div>
+              <!-- ── RECEIVED ── -->
+              <div class="message-row received" *ngIf="!msg.isDivider && !msg.isOwn && msg.type !== 'system'">
+                <div class="msg-avatar">
+                  {{ (msg.sender || '?').charAt(0).toUpperCase() }}
+                </div>
                 <div class="message-bubble-wrap">
                   <span class="msg-sender-name" *ngIf="selectedChat.isGroup && msg.sender">
                     {{ msg.sender }}
                   </span>
-                  <!-- Image received -->
+                  <!-- Image -->
                   <div class="message-bubble received image-bubble" *ngIf="isImageMessage(msg)">
                     <img *ngIf="getFileUrl(msg)" [src]="getFileUrl(msg)" [alt]="getFileName(msg.text)" class="msg-image"
                       (error)="onImageError($event)" (click)="openImage(msg)" />
@@ -197,7 +200,7 @@
                     </div>
                     <span class="msg-time bubble-time">{{ msg.time }}</span>
                   </div>
-                  <!-- File received -->
+                  <!-- File -->
                   <div class="message-bubble received file-bubble" *ngIf="isFileMessage(msg)">
                     <div class="msg-file" (click)="downloadFile(msg)">
                       <span class="material-icons file-icon">description</span>
@@ -206,7 +209,7 @@
                     </div>
                     <span class="msg-time bubble-time">{{ msg.time }}</span>
                   </div>
-                  <!-- Text received -->
+                  <!-- Text -->
                   <div class="message-bubble received" *ngIf="!isImageMessage(msg) && !isFileMessage(msg)">
                     <p class="msg-text">{{ msg.text }}</p>
                   </div>
@@ -216,10 +219,10 @@
                 </div>
               </div>
 
-              <!-- ── SENT MESSAGE ── -->
-              <div class="message-row sent" *ngIf="msg.isOwn && msg.type !== 'system'">
+              <!-- ── SENT ── -->
+              <div class="message-row sent" *ngIf="!msg.isDivider && msg.isOwn && msg.type !== 'system'">
                 <div class="message-bubble-wrap">
-                  <!-- Image sent -->
+                  <!-- Image -->
                   <div class="message-bubble sent image-bubble" *ngIf="isImageMessage(msg)">
                     <img *ngIf="getFileUrl(msg)" [src]="getFileUrl(msg)" [alt]="getFileName(msg.text)" class="msg-image"
                       (error)="onImageError($event)" (click)="openImage(msg)" />
@@ -230,17 +233,12 @@
                     <div class="msg-meta">
                       <span class="msg-time">{{ msg.time }}</span>
                       <span class="material-icons msg-status">
-                        {{
-                        (msg.status || '').toLowerCase() === 'seen'
-                        ? 'done_all'
-                        : (msg.status || '').toLowerCase() === 'delivered'
-                        ? 'done_all'
-                        : 'done'
-                        }}
+                        {{ msg.status === 'seen' ? 'done_all'
+                        : msg.status === 'delivered' ? 'done_all' : 'done' }}
                       </span>
                     </div>
                   </div>
-                  <!-- File sent -->
+                  <!-- File -->
                   <div class="message-bubble sent file-bubble" *ngIf="isFileMessage(msg)">
                     <div class="msg-file" (click)="downloadFile(msg)">
                       <span class="material-icons file-icon">description</span>
@@ -250,30 +248,21 @@
                     <div class="msg-meta">
                       <span class="msg-time">{{ msg.time }}</span>
                       <span class="material-icons msg-status">
-                        {{
-                        (msg.status || '').toLowerCase() === 'seen'
-                        ? 'done_all'
-                        : (msg.status || '').toLowerCase() === 'delivered'
-                        ? 'done_all'
-                        : 'done'
-                        }}
+                        {{ msg.status === 'seen' ? 'done_all'
+                        : msg.status === 'delivered' ? 'done_all' : 'done' }}
                       </span>
                     </div>
                   </div>
-                  <!-- Text sent -->
+                  <!-- Text -->
                   <div class="message-bubble sent" *ngIf="!isImageMessage(msg) && !isFileMessage(msg)">
                     <p class="msg-text">{{ msg.text }}</p>
                   </div>
                   <div class="msg-meta" *ngIf="!isImageMessage(msg) && !isFileMessage(msg)">
                     <span class="msg-time">{{ msg.time }}</span>
-                    <span class="material-icons msg-status">
-                      {{
-                      (msg.status || '').toLowerCase() === 'seen'
-                      ? 'done_all'
-                      : (msg.status || '').toLowerCase() === 'delivered'
-                      ? 'done_all'
-                      : 'done'
-                      }}
+                    <span class="material-icons msg-status"
+                      [style.color]="msg.status === 'seen' ? '#0891b2' : '#94a3b8'">
+                      {{ msg.status === 'seen' ? 'done_all'
+                      : msg.status === 'delivered' ? 'done_all' : 'done' }}
                     </span>
                   </div>
                 </div>
@@ -284,12 +273,16 @@
 
           <!-- Typing Indicator -->
           <div class="message-row received" *ngIf="isTyping && selectedChat && !isLoadingHistory">
-            <div class="msg-avatar">{{ selectedChat.name.charAt(0).toUpperCase() }}</div>
+            <div class="msg-avatar">
+              {{ selectedChat.name.charAt(0).toUpperCase() }}
+            </div>
             <div class="message-bubble-wrap">
               <span class="msg-sender-name" *ngIf="selectedChat.isGroup && typingPerson">
                 {{ typingPerson }}
               </span>
-              <div class="typing-bubble"><span></span><span></span><span></span></div>
+              <div class="typing-bubble">
+                <span></span><span></span><span></span>
+              </div>
             </div>
           </div>
 

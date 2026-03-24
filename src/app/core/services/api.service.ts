@@ -115,35 +115,35 @@ export class ApiService {
     return forkJoin(requests);
   }
 
- // Add these methods to api.service.ts
+  // Add these methods to api.service.ts
 
-// ── Base URL getter (for PDF window.open) ─────────────────────
-getBaseUrl(): string {
-  return this.baseUrl;
-}
+  // ── Base URL getter (for PDF window.open) ─────────────────────
+  getBaseUrl(): string {
+    return this.baseUrl;
+  }
 
-// ── Generic POST helper (for email endpoint) ──────────────────
-post(endpoint: string, body: any): Observable<any> {
-  return this.http.post(`${this.baseUrl}${endpoint}`, body);
-}
+  // ── Generic POST helper (for email endpoint) ──────────────────
+  post(endpoint: string, body: any): Observable<any> {
+    return this.http.post(`${this.baseUrl}${endpoint}`, body);
+  }
 
-// ── Attendance list — matches your controller exactly ─────────
-// POST /attendance-list?page=1&size=10&userId=3&date=2026-03-01
-getAttendanceList(params: {
-  page?:   number;
-  size?:   number;
-  id?:     number;
-  userId?: number | string;
-  date?:   string;
-} = {}): Observable<any> {
-  const q = new URLSearchParams();
-  if (params.page)   q.set('page',   String(params.page   ?? 1));
-  if (params.size)   q.set('size',   String(params.size   ?? 10));
-  if (params.id)     q.set('id',     String(params.id));
-  if (params.userId) q.set('userId', String(params.userId));
-  if (params.date)   q.set('date',   params.date);
-  return this.http.post(`${this.baseUrl}/attendance-list?${q.toString()}`, {});
-}
+  // ── Attendance list — matches your controller exactly ─────────
+  // POST /attendance-list?page=1&size=10&userId=3&date=2026-03-01
+  getAttendanceList(params: {
+    page?: number;
+    size?: number;
+    id?: number;
+    userId?: number | string;
+    date?: string;
+  } = {}): Observable<any> {
+    const q = new URLSearchParams();
+    if (params.page) q.set('page', String(params.page ?? 1));
+    if (params.size) q.set('size', String(params.size ?? 10));
+    if (params.id) q.set('id', String(params.id));
+    if (params.userId) q.set('userId', String(params.userId));
+    if (params.date) q.set('date', params.date);
+    return this.http.post(`${this.baseUrl}/attendance-list?${q.toString()}`, {});
+  }
 
 
 
@@ -152,15 +152,15 @@ getAttendanceList(params: {
   // TASKS
   // ══════════════════════════════════════════════════════
 
-createOrUpdateTask(dto: any, comment?: string): Observable<any> {
-  const params = comment?.trim()
-    ? `?comment=${encodeURIComponent(comment.trim())}`
-    : '';
-  return this.http.post(
-    `${this.baseUrl}/create-update-task${params}`,
-    dto,
-  );
-}
+  createOrUpdateTask(dto: any, comment?: string): Observable<any> {
+    const params = comment?.trim()
+      ? `?comment=${encodeURIComponent(comment.trim())}`
+      : '';
+    return this.http.post(
+      `${this.baseUrl}/create-update-task${params}`,
+      dto,
+    );
+  }
 
   getTaskList(payload: any): Observable<any> {
     return this.http.post(`${this.baseUrl}/task-list`, payload);
@@ -223,16 +223,11 @@ createOrUpdateTask(dto: any, comment?: string): Observable<any> {
     return this.http.patch(`${this.chatV1}/${chatId}`, { name, avatar });
   }
 
-  saveFcmToken(token: string): Observable<any> {
-    const userId = sessionStorage.getItem('id');
-    return this.http.post(
-      `${this.baseUrl}/chats/fcm-token`,
-      { token, userId }
-    );
+  saveFcmToken(data: any) {
+    return this.http.post(`${this.chatV1}/fcm-token`, data);
   }
-
-  removeFcmToken(): Observable<any> {
-    return this.http.delete(`${this.chatV1}/fcm-token`);
+  removeFcmToken(data: any) {
+    return this.http.post(`${this.chatV1}/remove-token`, data);
   }
 
   // ── File upload ───────────────────────────────────────
