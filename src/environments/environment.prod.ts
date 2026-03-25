@@ -1,6 +1,5 @@
 export const environment = {
-  apiUrl: 'http://localhost:8080/wms',
-  // apiUrl: 'https://raymonde-ungotten-honey.ngrok-free.dev/wms',
+  apiUrl: 'https://raymonde-ungotten-honey.ngrok-free.dev/wms',
  firebase: {
    apiKey: "AIzaSyD7RyYAkGjS4qOwH35366qYFGLfMKDYLsc",
   authDomain: "workforce-management-1003.firebaseapp.com",
