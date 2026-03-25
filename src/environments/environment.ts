@@ -1,6 +1,6 @@
 export const environment = {
   // apiUrl: 'http://localhost:8080/wms',
-  apiUrl: 'https://framing-journalist-july-essay.trycloudflare.com/wms',
+  apiUrl: 'https://webster-shades-high-invention.trycloudflare.com/wms',
  firebase: {
    apiKey: "AIzaSyD7RyYAkGjS4qOwH35366qYFGLfMKDYLsc",
   authDomain: "workforce-management-1003.firebaseapp.com",
