@@ -1,6 +1,6 @@
 export const environment = {
-  // apiUrl: 'http://localhost:8080/wms',
-  apiUrl: 'https://webster-shades-high-invention.trycloudflare.com/wms',
+  apiUrl: 'http://localhost:8080/wms',
+  // apiUrl: 'https://webster-shades-high-invention.trycloudflare.com/wms',
  firebase: {
    apiKey: "AIzaSyD7RyYAkGjS4qOwH35366qYFGLfMKDYLsc",
   authDomain: "workforce-management-1003.firebaseapp.com",
@@ -11,4 +11,5 @@ export const environment = {
   },
   vapidKey: "BEbXiBQlAlLqNmcQNlNAr9xamGUwpGW1yOilQrMm4rtdf7ibG792Ctp48sLTvB0Fx1lTWPtxfvBJG_4SLx-1kQs"
 };
+
 

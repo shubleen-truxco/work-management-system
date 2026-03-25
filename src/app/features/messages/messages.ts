@@ -30,8 +30,8 @@ export class Messages implements OnInit, OnDestroy, AfterViewChecked {
   private token = sessionStorage.getItem('token') || '';
 
   private ws!: WebSocket;
-  private wsUrl ='wss://raymonde-ungotten-honey.ngrok-free.dev/wms/ws/chat';
-  // private wsUrl = 'ws://localhost:8080/wms/ws/chat';
+  // private wsUrl ='wss://raymonde-ungotten-honey.ngrok-free.dev/wms/ws/chat';
+  private wsUrl = 'ws://localhost:8080/wms/ws/chat';
   private shouldScroll = false;
   private typingTimer: any;
   private pingInterval: any;

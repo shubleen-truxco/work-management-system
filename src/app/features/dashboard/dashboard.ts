@@ -5,11 +5,12 @@ import { CommonModule } from '@angular/common';
 import { RouterModule }  from '@angular/router';
 import { Sidebar }       from '../../shared/sidebar/sidebar';
 import { ApiService }    from '../../core/services/api.service';
+import { FormsModule } from '@angular/forms';
 
 @Component({
   selector:    'app-dashboard',
   standalone:  true,
-  imports:     [CommonModule, RouterModule, Sidebar],
+  imports:     [CommonModule, RouterModule, Sidebar,FormsModule],
   templateUrl: './dashboard.html',
   styleUrls:   ['./dashboard.css'],
 })

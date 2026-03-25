@@ -136,7 +136,7 @@
         <div class="db-card">
           <div class="card-head">
             <span class="card-title">Task progress</span>
-            <a class="card-link" routerLink="/tasks">View all</a>
+            <a class="card-link" routerLink="/task-management">View all</a>
           </div>
           <div class="prog-row">
             <span class="prog-label">Completed</span>
@@ -168,11 +168,11 @@
           </div>
 
           <div class="quick-btns">
-            <a class="qbtn" routerLink="/tasks">
+            <a class="qbtn" routerLink="/task-management">
               <span class="material-icons qbtn-icon teal">add_task</span>
               New task
             </a>
-            <a class="qbtn" routerLink="/tasks" [queryParams]="{filter:'overdue'}">
+            <a class="qbtn" routerLink="/task-management" [queryParams]="{filter:'overdue'}">
               <span class="material-icons qbtn-icon red">warning</span>
               Overdue
             </a>
@@ -224,7 +224,7 @@
         <div class="db-card">
           <div class="card-head">
             <span class="card-title">Recent tasks</span>
-            <a class="card-link" routerLink="/tasks">View all</a>
+            <a class="card-link" routerLink="/task-management">View all</a>
           </div>
 
           <div class="task-empty" *ngIf="recentTasks.length === 0">

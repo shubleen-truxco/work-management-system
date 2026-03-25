@@ -8,7 +8,7 @@ import { ToastService } from '../../shared/toast/toast.service';
 @Component({
   selector: 'app-reports',
   standalone: true,
-  imports: [CommonModule, FormsModule, Sidebar, DatePipe],
+  imports: [CommonModule,FormsModule, Sidebar, DatePipe],
   templateUrl: './reports.html',
   styleUrls: ['./reports.css'],
 })
@@ -370,7 +370,11 @@ export class Reports implements OnInit {
   private fetchPdfBlob(): Promise<Blob> {
     const { path, params } = this.buildExportParams();
     const query = params.toString() ? '?' + params.toString() : '';
-    const fullUrl = this.api.getBaseUrl() + path + query;
+    // const fullUrl = this.api.getBaseUrl() + path + query;
+    const base = this.api.getBaseUrl().replace(/\/$/, '');
+const cleanPath = path.startsWith('/') ? path : '/' + path;
+
+const fullUrl = base + cleanPath + query;
     const token = this.getToken();
 
     return fetch(fullUrl, {
