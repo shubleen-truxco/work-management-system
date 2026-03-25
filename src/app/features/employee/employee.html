@@ -381,141 +381,197 @@
                 <span class="view-value">{{ viewEmp.empId || '—' }}</span>
               </div>
             </div>
-               <div class="view-item full-width">
-                <span class="view-label">Password</span>
-                <div class="view-password-wrap">
-                  <input
-                    class="view-password-input"
-                    [type]="showPassword ? 'text' : 'password'"
-                    [value]="viewEmp.rawPassword || '••••••••••'"
-                    readonly />
-                  <button class="view-password-toggle" (click)="showPassword = !showPassword" type="button">
-                    <span class="material-icons">{{ showPassword ? 'visibility_off' : 'visibility' }}</span>
-                  </button>
-                </div>
-                <span class="view-password-hint" *ngIf="!viewEmp.rawPassword">
-                  <span class="material-icons">info</span>
-                  Password is encrypted — shown only when set by admin
-                </span>
+            <div class="view-item full-width">
+              <span class="view-label">Password</span>
+              <div class="view-password-wrap">
+                <input class="view-password-input" [type]="showPassword ? 'text' : 'password'"
+                  [value]="viewEmp.rawPassword || '••••••••••'" readonly />
+                <button class="view-password-toggle" (click)="showPassword = !showPassword" type="button">
+                  <span class="material-icons">{{ showPassword ? 'visibility_off' : 'visibility' }}</span>
+                </button>
               </div>
+              <span class="view-password-hint" *ngIf="!viewEmp.rawPassword">
+                <span class="material-icons">info</span>
+                Password is encrypted — shown only when set by admin
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Contact -->
+        <div class="view-section">
+          <div class="view-section-title">
+            <span class="material-icons">contacts</span>Contact Information
+          </div>
+          <div class="view-grid">
+            <div class="view-item full-width">
+              <span class="view-label">Email Address</span>
+              <span class="view-value">
+                <span class="material-icons view-inline-icon">email</span>
+                {{ viewEmp.emailId || '—' }}
+              </span>
+            </div>
+            <div class="view-item">
+              <span class="view-label">Phone Number</span>
+              <span class="view-value">
+                <span class="material-icons view-inline-icon">phone</span>
+                {{ viewEmp.mobileNumber ? (viewEmp.countryCode + ' ' + viewEmp.mobileNumber) : '—' }}
+              </span>
+            </div>
+            <div class="view-item">
+              <span class="view-label">Location</span>
+              <span class="view-value">
+                <span class="material-icons view-inline-icon">location_on</span>
+                {{ viewEmp.location || '—' }}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Work -->
+        <div class="view-section">
+          <div class="view-section-title">
+            <span class="material-icons">work</span>Work Information
+          </div>
+          <div class="view-grid">
+            <div class="view-item">
+              <span class="view-label">Designation</span>
+              <span class="view-value">{{ viewEmp.designationName || '—' }}</span>
+            </div>
+            <div class="view-item">
+              <span class="view-label">Role</span>
+              <span class="view-value">{{ viewEmp.role || '—' }}</span>
+            </div>
+            <div class="view-item">
+              <span class="view-label">Time In</span>
+              <span class="view-value">
+                <span class="material-icons view-inline-icon">schedule</span>
+                {{ viewEmp.timeIn || '—' }}
+              </span>
+            </div>
+            <div class="view-item">
+              <span class="view-label">Break Time</span>
+              <span class="view-value">
+                <span class="material-icons view-inline-icon">free_breakfast</span>
+                {{ viewEmp.breakTime || '—' }}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Device -->
+        <div class="view-section">
+          <div class="view-section-title">
+            <span class="material-icons">devices</span>Device Information
+          </div>
+          <div class="view-grid">
+            <div class="view-item">
+              <span class="view-label">Device Type</span>
+              <span class="view-value">{{ viewEmp.deviceType || '—' }}</span>
+            </div>
+            <div class="view-item">
+              <span class="view-label">Device ID</span>
+              <span class="view-value view-mono">{{ viewEmp.deviceId || '—' }}</span>
+            </div>
+            <div class="view-item full-width">
+              <span class="view-label">Last Login</span>
+              <span class="view-value">
+                <span class="material-icons view-inline-icon">login</span>
+                {{ viewEmp.lastLoginAt ? (viewEmp.lastLoginAt | date:'dd MMM yyyy, hh:mm a') : '—' }}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <!-- GPS -->
+        <div class="view-section" *ngIf="viewEmp.currentLocationLat">
+          <div class="view-section-title">
+            <span class="material-icons">my_location</span>GPS Coordinates
+          </div>
+          <div class="view-grid">
+            <div class="view-item">
+              <span class="view-label">Latitude</span>
+              <span class="view-value view-mono">{{ viewEmp.currentLocationLat || '—' }}</span>
+            </div>
+            <div class="view-item">
+              <span class="view-label">Longitude</span>
+              <span class="view-value view-mono">{{ viewEmp.currentLocationLon || '—' }}</span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+    <div class="view-tab-content" *ngIf="activeViewTab === 'attendance'">
+
+      <div *ngIf="viewEmp?.attendance?.length; else noAttendance" class="attendance-list">
+
+        <div class="attendance-card" *ngFor="let att of viewEmp.attendance">
+
+          <div class="attendance-header">
+            <span class="attendance-date">
+              {{ att.date | date:'dd MMM yyyy' }}
+            </span>
+
+            <span class="attendance-status" [ngClass]="getAttendanceStatus(att).toLowerCase()">
+              {{ getAttendanceStatus(att) }}
+            </span>
+          </div>
+
+          <div class="attendance-grid">
+            <div class="attendance-item">
+              <span class="attendance-label">Time In</span>
+              <span class="attendance-value">
+                <span class="material-icons">login</span>
+                {{ formatTime(att.timeIn) }}
+              </span>
+            </div>
+
+            <div class="attendance-item">
+              <span class="attendance-label">Time Out</span>
+              <span class="attendance-value">
+                <span class="material-icons">logout</span>
+                {{ formatTime(att.timeOut) }}
+              </span>
+            </div>
+
+            <div class="attendance-item">
+              <span class="attendance-label">Break</span>
+              <span class="attendance-value">
+                <span class="material-icons">free_breakfast</span>
+                {{ formatMinutes(att.breakMinutes) }}
+              </span>
             </div>
           </div>
 
-          <!-- Contact -->
-          <div class="view-section">
-            <div class="view-section-title">
-              <span class="material-icons">contacts</span>Contact Information
-            </div>
-            <div class="view-grid">
-              <div class="view-item full-width">
-                <span class="view-label">Email Address</span>
-                <span class="view-value">
-                  <span class="material-icons view-inline-icon">email</span>
-                  {{ viewEmp.emailId || '—' }}
-                </span>
-              </div>
-              <div class="view-item">
-                <span class="view-label">Phone Number</span>
-                <span class="view-value">
-                  <span class="material-icons view-inline-icon">phone</span>
-                  {{ viewEmp.mobileNumber ? (viewEmp.countryCode + ' ' + viewEmp.mobileNumber) : '—' }}
-                </span>
-              </div>
-              <div class="view-item">
-                <span class="view-label">Location</span>
-                <span class="view-value">
-                  <span class="material-icons view-inline-icon">location_on</span>
-                  {{ viewEmp.location || '—' }}
-                </span>
-              </div>
-            </div>
-          </div>
-
-          <!-- Work -->
-          <div class="view-section">
-            <div class="view-section-title">
-              <span class="material-icons">work</span>Work Information
-            </div>
-            <div class="view-grid">
-              <div class="view-item">
-                <span class="view-label">Designation</span>
-                <span class="view-value">{{ viewEmp.designationName || '—' }}</span>
-              </div>
-              <div class="view-item">
-                <span class="view-label">Role</span>
-                <span class="view-value">{{ viewEmp.role || '—' }}</span>
-              </div>
-              <div class="view-item">
-                <span class="view-label">Time In</span>
-                <span class="view-value">
-                  <span class="material-icons view-inline-icon">schedule</span>
-                  {{ viewEmp.timeIn || '—' }}
-                </span>
-              </div>
-              <div class="view-item">
-                <span class="view-label">Break Time</span>
-                <span class="view-value">
-                  <span class="material-icons view-inline-icon">free_breakfast</span>
-                  {{ viewEmp.breakTime || '—' }}
-                </span>
-              </div>
-            </div>
-          </div>
-
-          <!-- Device -->
-          <div class="view-section">
-            <div class="view-section-title">
-              <span class="material-icons">devices</span>Device Information
-            </div>
-            <div class="view-grid">
-              <div class="view-item">
-                <span class="view-label">Device Type</span>
-                <span class="view-value">{{ viewEmp.deviceType || '—' }}</span>
-              </div>
-              <div class="view-item">
-                <span class="view-label">Device ID</span>
-                <span class="view-value view-mono">{{ viewEmp.deviceId || '—' }}</span>
-              </div>
-              <div class="view-item full-width">
-                <span class="view-label">Last Login</span>
-                <span class="view-value">
-                  <span class="material-icons view-inline-icon">login</span>
-                  {{ viewEmp.lastLoginAt ? (viewEmp.lastLoginAt | date:'dd MMM yyyy, hh:mm a') : '—' }}
-                </span>
-              </div>
-            </div>
-          </div>
-
-          <!-- GPS -->
-          <div class="view-section" *ngIf="viewEmp.currentLocationLat">
-            <div class="view-section-title">
-              <span class="material-icons">my_location</span>GPS Coordinates
-            </div>
-            <div class="view-grid">
-              <div class="view-item">
-                <span class="view-label">Latitude</span>
-                <span class="view-value view-mono">{{ viewEmp.currentLocationLat || '—' }}</span>
-              </div>
-              <div class="view-item">
-                <span class="view-label">Longitude</span>
-                <span class="view-value view-mono">{{ viewEmp.currentLocationLon || '—' }}</span>
-              </div>
-            </div>
+          <div class="attendance-footer">
+            <span class="attendance-duration">
+              {{ formatMinutes(att.totalMinutes) }}
+            </span>
           </div>
 
         </div>
       </div>
 
-      <div class="modal-footer">
-        <button type="button" class="modal-btn cancel" (click)="closeViewModal()">
-          <span class="material-icons">close</span>
-          Close
-        </button>
-        <!-- <button type="button" class="modal-btn submit" (click)="closeViewModal(); openEditModal(viewEmp)">
+      <ng-template #noAttendance>
+        <div class="attendance-empty">
+          <span class="material-icons">event_busy</span>
+          <p>No attendance records found</p>
+        </div>
+      </ng-template>
+
+    </div>
+
+    <div class="modal-footer">
+      <button type="button" class="modal-btn cancel" (click)="closeViewModal()">
+        <span class="material-icons">close</span>
+        Close
+      </button>
+      <!-- <button type="button" class="modal-btn submit" (click)="closeViewModal(); openEditModal(viewEmp)">
         <span class="material-icons">edit</span>
         Edit Employee
       </button> -->
-      </div>
-
     </div>
+
   </div>
+</div>

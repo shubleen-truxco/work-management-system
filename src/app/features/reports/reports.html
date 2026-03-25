@@ -394,7 +394,7 @@
                     [class.row-sel]="selectedAttendance?.id === att.id"
                     (click)="selectAttendance(att)">
                     <td><span class="date-val">{{ att.attendanceDate | date:'dd MMM yyyy' }}</span></td>
-                    <td><div class="emp-cell"><div class="emp-av">{{ (att.userName || att.user?.name || '?').charAt(0).toUpperCase() }}</div><span>{{ att.userName || att.user?.name || '—' }}</span></div></td>
+                    <td><div class="emp-cell"><div class="emp-av">{{ empName(att.userId).charAt(0) }}</div><span>{{ empName(att.userId) }}</span></div></td>
                     <td><span class="att-pill" [ngClass]="getAttStatusClass(att.status)">{{ att.status || '—' }}</span></td>
                     <td><span class="time-val">{{ att.timeIn ? (att.timeIn | date:'hh:mm a') : '—' }}</span></td>
                     <td><span class="time-val">{{ att.timeOut ? (att.timeOut | date:'hh:mm a') : '—' }}</span></td>
@@ -698,4 +698,30 @@
 
     </div><!-- /rp-body -->
   </div><!-- /reports-panel -->
+</div>
+
+<!-- EMAIL MODAL -->
+<div class="modal-backdrop" *ngIf="showEmailModal">
+  <div class="modal-box">
+
+    <h3>Send Report via Email</h3>
+
+    <input
+      type="email"
+      placeholder="Enter email address"
+      [(ngModel)]="emailInput"
+      class="modal-input"
+    />
+
+    <div class="modal-actions">
+      <button class="btn cancel" (click)="showEmailModal = false">
+        Cancel
+      </button>
+
+      <button class="btn send" (click)="sendEmailReport()">
+        Send
+      </button>
+    </div>
+
+  </div>
 </div>

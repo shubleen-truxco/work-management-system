@@ -106,6 +106,7 @@ export class EmployeeList implements OnInit {
 
   // ── Helpers ───────────────────────────────────────────
   getDisplayName(emp: any): string {
+     if (!emp) return '—';
     if (emp.firstName || emp.lastName)
       return `${emp.firstName || ''} ${emp.lastName || ''}`.trim();
     return emp.name || emp.username || '—';
@@ -230,11 +231,21 @@ export class EmployeeList implements OnInit {
   }
 
   openViewModal(emp: any): void {
-    this.viewEmp = emp;
-    this.activeViewTab = 'profile';
-    this.showViewModal = true;
-    this.showPassword  = false; 
-  }
+  this.activeViewTab = 'profile';
+  this.showViewModal = true;
+  this.showPassword = false;
+
+  this.api.getEmployeeById(emp.id).subscribe({
+    next: (res: any) => {
+      if (res.success) {
+        this.viewEmp = res.data; // must include attendance
+      }
+    },
+    error: () => {
+      this.toast.show('Failed to load employee details', 'error');
+    }
+  });
+}
 
   closeViewModal(): void {
     this.showViewModal = false;

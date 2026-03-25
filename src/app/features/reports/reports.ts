@@ -18,34 +18,36 @@ export class Reports implements OnInit {
   activeTab: 'task' | 'attendance' | 'productivity' = 'task';
 
   // ── Loading states ────────────────────────────────
-  isLoading           = false;
-  isLoadingDetail     = false;
-  isLoadingLogs       = false;
+  isLoading = false;
+  isLoadingDetail = false;
+  isLoadingLogs = false;
   isLoadingAttendance = false;
-  isSubmitting        = false;
-  isExporting         = false;
-  isPrinting          = false;
+  isSubmitting = false;
+  isExporting = false;
+  isPrinting = false;
+  showEmailModal = false;
+  emailInput = '';
 
   // ── Task report ───────────────────────────────────
-  tasks:        any[] = [];
-  allTasks:     any[] = [];
-  selectedTask: any   = null;
-  taskLogs:     any[] = [];
+  tasks: any[] = [];
+  allTasks: any[] = [];
+  selectedTask: any = null;
+  taskLogs: any[] = [];
   taskComments: any[] = [];
-  newComment          = '';
+  newComment = '';
   detailTab: 'summary' | 'activity' | 'comments' = 'summary';
   page = 1; size = 10;
   totalPages = 1; currentPage = 1; isFirst = true; isLast = false;
 
   // ── Attendance report ─────────────────────────────
-  attendanceList:     any[] = [];
-  selectedAttendance: any   = null;
-  attendanceSummary:  any   = null;
+  attendanceList: any[] = [];
+  selectedAttendance: any = null;
+  attendanceSummary: any = null;
 
   // ── Productivity report ───────────────────────────
   productivityList: any[] = [];
-  selectedEmployee: any   = null;
-  productivityData: any   = null;
+  selectedEmployee: any = null;
+  productivityData: any = null;
 
   // ── Employees ─────────────────────────────────────
   employees: any[] = [];
@@ -53,7 +55,7 @@ export class Reports implements OnInit {
   // ── Filters (per tab) ─────────────────────────────
   // dateFrom / dateTo drive both list filtering AND PDF/Print export
   taskFilters = { status: '', priority: '', search: '', dateFrom: '', dateTo: '' };
-  attFilters  = { employeeId: '', dateFrom: '', dateTo: '' };
+  attFilters = { employeeId: '', dateFrom: '', dateTo: '' };
   prodFilters = { employeeId: '', dateFrom: '', dateTo: '' };
 
   // ── Stats ─────────────────────────────────────────
@@ -61,20 +63,20 @@ export class Reports implements OnInit {
 
   // ── Options ───────────────────────────────────────
   statusOptions = [
-    { value: '',            label: 'All Status'  },
-    { value: 'PENDING',     label: 'Pending'     },
+    { value: '', label: 'All Status' },
+    { value: 'PENDING', label: 'Pending' },
     { value: 'IN_PROGRESS', label: 'In Progress' },
-    { value: 'COMPLETED',   label: 'Completed'   },
+    { value: 'COMPLETED', label: 'Completed' },
   ];
 
   priorityOptions = [
-    { value: '',       label: 'All Priority' },
-    { value: 'HIGH',   label: 'High'         },
-    { value: 'MEDIUM', label: 'Medium'       },
-    { value: 'LOW',    label: 'Low'          },
+    { value: '', label: 'All Priority' },
+    { value: 'HIGH', label: 'High' },
+    { value: 'MEDIUM', label: 'Medium' },
+    { value: 'LOW', label: 'Low' },
   ];
 
-  constructor(private api: ApiService, private toast: ToastService) {}
+  constructor(private api: ApiService, private toast: ToastService) { }
 
   ngOnInit(): void {
     this.loadEmployees();
@@ -82,13 +84,14 @@ export class Reports implements OnInit {
     this.loadTasks();
   }
 
+
   // ══ TAB SWITCHING ════════════════════════════════
   setTab(tab: 'task' | 'attendance' | 'productivity'): void {
-    this.activeTab          = tab;
-    this.selectedTask       = null;
+    this.activeTab = tab;
+    this.selectedTask = null;
     this.selectedAttendance = null;
-    this.selectedEmployee   = null;
-    if (tab === 'attendance')   this.loadAttendance();
+    this.selectedEmployee = null;
+    if (tab === 'attendance') this.loadAttendance();
     if (tab === 'productivity') this.loadProductivity();
   }
 
@@ -102,7 +105,7 @@ export class Reports implements OnInit {
             !['ADMIN'].includes(e.role?.name ?? e.role ?? ''));
         }
       },
-      error: () => {}
+      error: () => { }
     });
   }
 
@@ -115,40 +118,40 @@ export class Reports implements OnInit {
           this.buildStats();
         }
       },
-      error: () => {}
+      error: () => { }
     });
   }
 
   buildStats(): void {
-    const t       = this.allTasks;
+    const t = this.allTasks;
     const overdue = t.filter(x =>
       x.status !== 'COMPLETED' && x.endDate && new Date(x.endDate) < new Date()
     ).length;
     this.statCards = [
-      { label: 'Total',       value: t.length,                                         icon: 'assignment',  color: 'teal',  sub: 'All tasks'     },
-      { label: 'Completed',   value: t.filter(x => x.status === 'COMPLETED').length,   icon: 'task_alt',    color: 'green', sub: 'Finished'      },
-      { label: 'In Progress', value: t.filter(x => x.status === 'IN_PROGRESS').length, icon: 'autorenew',   color: 'blue',  sub: 'Active'        },
-      { label: 'Overdue',     value: overdue,                                           icon: 'warning',     color: 'red',   sub: 'Past deadline' },
+      { label: 'Total', value: t.length, icon: 'assignment', color: 'teal', sub: 'All tasks' },
+      { label: 'Completed', value: t.filter(x => x.status === 'COMPLETED').length, icon: 'task_alt', color: 'green', sub: 'Finished' },
+      { label: 'In Progress', value: t.filter(x => x.status === 'IN_PROGRESS').length, icon: 'autorenew', color: 'blue', sub: 'Active' },
+      { label: 'Overdue', value: overdue, icon: 'warning', color: 'red', sub: 'Past deadline' },
     ];
   }
 
   // ══ TASK REPORT ══════════════════════════════════
   loadTasks(): void {
     this.isLoading = true;
-    const p: any   = { page: this.page, size: this.size };
-    if (this.taskFilters.status)   p.status   = this.taskFilters.status;
+    const p: any = { page: this.page, size: this.size };
+    if (this.taskFilters.status) p.status = this.taskFilters.status;
     if (this.taskFilters.priority) p.priority = this.taskFilters.priority;
     if (this.taskFilters.dateFrom) p.dateFrom = this.taskFilters.dateFrom;
-    if (this.taskFilters.dateTo)   p.dateTo   = this.taskFilters.dateTo;
+    if (this.taskFilters.dateTo) p.dateTo = this.taskFilters.dateTo;
     this.api.getTaskList(p).subscribe({
       next: (res: any) => {
-        this.isLoading   = false;
-        const data       = res.data;
-        this.tasks       = data?.items       ?? [];
-        this.totalPages  = data?.totalPages  ?? 1;
+        this.isLoading = false;
+        const data = res.data;
+        this.tasks = data?.items ?? [];
+        this.totalPages = data?.totalPages ?? 1;
         this.currentPage = data?.currentPage ?? 1;
-        this.isFirst     = data?.isFirst     ?? true;
-        this.isLast      = data?.isLast      ?? false;
+        this.isFirst = data?.isFirst ?? true;
+        this.isLast = data?.isLast ?? false;
       },
       error: () => { this.isLoading = false; }
     });
@@ -156,8 +159,8 @@ export class Reports implements OnInit {
 
   applyTaskFilters(): void { this.page = 1; this.selectedTask = null; this.loadTasks(); }
   resetTaskFilters(): void {
-    this.taskFilters  = { status: '', priority: '', search: '', dateFrom: '', dateTo: '' };
-    this.page         = 1;
+    this.taskFilters = { status: '', priority: '', search: '', dateFrom: '', dateTo: '' };
+    this.page = 1;
     this.selectedTask = null;
     this.loadTasks();
   }
@@ -165,8 +168,8 @@ export class Reports implements OnInit {
   selectTask(task: any): void {
     if (this.selectedTask?.id === task.id) return;
     this.selectedTask = task;
-    this.detailTab    = 'summary';
-    this.newComment   = '';
+    this.detailTab = 'summary';
+    this.newComment = '';
     this.loadTaskDetail(task.id);
     this.loadTaskLogs(task.id);
   }
@@ -187,7 +190,7 @@ export class Reports implements OnInit {
 
   loadTaskLogs(id: number): void {
     this.isLoadingLogs = true;
-    this.taskLogs      = [];
+    this.taskLogs = [];
     this.api.getActivityQuery({ module: 'TASKS', id: String(id) }).subscribe({
       next: (res: any) => {
         this.isLoadingLogs = false;
@@ -217,18 +220,18 @@ export class Reports implements OnInit {
   }
 
   prevPage(): void { if (!this.isFirst) { this.page--; this.loadTasks(); } }
-  nextPage(): void { if (!this.isLast)  { this.page++; this.loadTasks(); } }
+  nextPage(): void { if (!this.isLast) { this.page++; this.loadTasks(); } }
 
   // ══ ATTENDANCE REPORT ════════════════════════════
   loadAttendance(): void {
     this.isLoadingAttendance = true;
-    this.attendanceList      = [];
-    this.selectedAttendance  = null;
+    this.attendanceList = [];
+    this.selectedAttendance = null;
 
     const params: any = { page: 1, size: 50 };
-    if (this.attFilters.employeeId) params['userId']    = this.attFilters.employeeId;
-    if (this.attFilters.dateFrom)   params['startDate'] = this.attFilters.dateFrom;
-    if (this.attFilters.dateTo)     params['endDate']   = this.attFilters.dateTo;
+    if (this.attFilters.employeeId) params['userId'] = this.attFilters.employeeId;
+    if (this.attFilters.dateFrom) params['startDate'] = this.attFilters.dateFrom;
+    if (this.attFilters.dateTo) params['endDate'] = this.attFilters.dateTo;
 
     this.api.getAttendanceList(params).subscribe({
       next: (res: any) => {
@@ -244,7 +247,7 @@ export class Reports implements OnInit {
 
   applyAttFilters(): void { this.selectedAttendance = null; this.loadAttendance(); }
   resetAttFilters(): void {
-    this.attFilters         = { employeeId: '', dateFrom: '', dateTo: '' };
+    this.attFilters = { employeeId: '', dateFrom: '', dateTo: '' };
     this.selectedAttendance = null;
     this.loadAttendance();
   }
@@ -252,11 +255,11 @@ export class Reports implements OnInit {
   buildAttendanceSummary(): void {
     const list = this.attendanceList;
     if (!list.length) { this.attendanceSummary = null; return; }
-    const totalDays  = list.length;
-    const present    = list.filter(a => a.status?.toLowerCase() === 'present').length;
-    const totalHours = list.reduce((s: number, a: any) => s + (a.totalWorkHours    ?? 0), 0);
+    const totalDays = list.length;
+    const present = list.filter(a => a.status?.toLowerCase() === 'present').length;
+    const totalHours = list.reduce((s: number, a: any) => s + (a.totalWorkHours ?? 0), 0);
     const totalBreak = list.reduce((s: number, a: any) => s + (a.totalBreakMinutes ?? 0), 0);
-    const avgHours   = totalDays ? (totalHours / totalDays).toFixed(1) : '0';
+    const avgHours = totalDays ? (totalHours / totalDays).toFixed(1) : '0';
     this.attendanceSummary = {
       totalDays, present, absent: totalDays - present,
       totalHours: totalHours.toFixed(1), avgHours, totalBreakMins: totalBreak
@@ -267,7 +270,7 @@ export class Reports implements OnInit {
 
   // ══ PRODUCTIVITY REPORT ══════════════════════════
   loadProductivity(): void {
-    this.isLoading        = true;
+    this.isLoading = true;
     this.productivityList = [];
     this.selectedEmployee = null;
     this.productivityData = null;
@@ -289,7 +292,7 @@ export class Reports implements OnInit {
     this.loadProductivity();
   }
   resetProdFilters(): void {
-    this.prodFilters      = { employeeId: '', dateFrom: '', dateTo: '' };
+    this.prodFilters = { employeeId: '', dateFrom: '', dateTo: '' };
     this.selectedEmployee = null;
     this.productivityData = null;
     this.loadProductivity();
@@ -299,7 +302,7 @@ export class Reports implements OnInit {
     const empMap = new Map<number, any>();
     allTasks.forEach((task: any) => {
       (task.assignedUsers ?? []).forEach((u: any) => {
-        const id   = typeof u === 'object' ? u.id   : null;
+        const id = typeof u === 'object' ? u.id : null;
         const name = typeof u === 'object' ? u.name : u;
         if (!id) return;
         if (!empMap.has(id)) {
@@ -308,9 +311,9 @@ export class Reports implements OnInit {
         const emp = empMap.get(id);
         emp.tasks.push(task);
         emp.total++;
-        if (task.status === 'COMPLETED')   emp.completed++;
+        if (task.status === 'COMPLETED') emp.completed++;
         if (task.status === 'IN_PROGRESS') emp.inProgress++;
-        if (task.status === 'PENDING')     emp.pending++;
+        if (task.status === 'PENDING') emp.pending++;
         if (task.status !== 'COMPLETED' && task.endDate && new Date(task.endDate) < new Date()) emp.overdue++;
       });
     });
@@ -328,29 +331,29 @@ export class Reports implements OnInit {
   // ══ SHARED: build path + query params for current tab ══
   private buildExportParams(): { path: string; params: URLSearchParams } {
     const params = new URLSearchParams();
-    let path     = '';
+    let path = '';
 
     if (this.activeTab === 'task') {
       path = '/tasks/pdf';
-      if (this.taskFilters.status)   params.set('status',   this.taskFilters.status);
+      if (this.taskFilters.status) params.set('status', this.taskFilters.status);
       if (this.taskFilters.priority) params.set('priority', this.taskFilters.priority);
       if (this.taskFilters.dateFrom) params.set('dateFrom', this.taskFilters.dateFrom);
-      if (this.taskFilters.dateTo)   params.set('dateTo',   this.taskFilters.dateTo);
-      if (this.selectedTask?.id)     params.set('taskId',   String(this.selectedTask.id));
+      if (this.taskFilters.dateTo) params.set('dateTo', this.taskFilters.dateTo);
+      if (this.selectedTask?.id) params.set('taskId', String(this.selectedTask.id));
 
     } else if (this.activeTab === 'attendance') {
       path = '/attendance/pdf';
-      if (this.attFilters.employeeId) params.set('userId',    this.attFilters.employeeId);
-      if (this.attFilters.dateFrom)   params.set('startDate', this.attFilters.dateFrom);
-      if (this.attFilters.dateTo)     params.set('endDate',   this.attFilters.dateTo);
+      if (this.attFilters.employeeId) params.set('userId', this.attFilters.employeeId);
+      if (this.attFilters.dateFrom) params.set('startDate', this.attFilters.dateFrom);
+      if (this.attFilters.dateTo) params.set('endDate', this.attFilters.dateTo);
 
     } else {
       path = '/productivity/pdf';
-      if (this.prodFilters.employeeId) params.set('userId',    this.prodFilters.employeeId);
-      if (this.prodFilters.dateFrom)   params.set('startDate', this.prodFilters.dateFrom);
-      if (this.prodFilters.dateTo)     params.set('endDate',   this.prodFilters.dateTo);
+      if (this.prodFilters.employeeId) params.set('userId', this.prodFilters.employeeId);
+      if (this.prodFilters.dateFrom) params.set('startDate', this.prodFilters.dateFrom);
+      if (this.prodFilters.dateTo) params.set('endDate', this.prodFilters.dateTo);
       // selectedEmployee overrides the dropdown when a row is clicked
-      if (this.selectedEmployee?.id)   params.set('userId',    String(this.selectedEmployee.id));
+      if (this.selectedEmployee?.id) params.set('userId', String(this.selectedEmployee.id));
     }
 
     return { path, params };
@@ -358,17 +361,17 @@ export class Reports implements OnInit {
 
   private getToken(): string {
     return localStorage.getItem('token')
-        ?? localStorage.getItem('authToken')
-        ?? localStorage.getItem('access_token')
-        ?? '';
+      ?? localStorage.getItem('authToken')
+      ?? localStorage.getItem('access_token')
+      ?? '';
   }
 
   // ── Shared fetch helper — returns a PDF blob ──────
   private fetchPdfBlob(): Promise<Blob> {
     const { path, params } = this.buildExportParams();
-    const query   = params.toString() ? '?' + params.toString() : '';
+    const query = params.toString() ? '?' + params.toString() : '';
     const fullUrl = this.api.getBaseUrl() + path + query;
-    const token   = this.getToken();
+    const token = this.getToken();
 
     return fetch(fullUrl, {
       method: 'GET',
@@ -390,8 +393,8 @@ export class Reports implements OnInit {
     this.fetchPdfBlob()
       .then(blob => {
         const objectUrl = URL.createObjectURL(blob);
-        const anchor    = document.createElement('a');
-        anchor.href     = objectUrl;
+        const anchor = document.createElement('a');
+        anchor.href = objectUrl;
         anchor.download = `${this.activeTab}-report.pdf`;
         document.body.appendChild(anchor);
         anchor.click();
@@ -419,9 +422,9 @@ export class Reports implements OnInit {
         const blobUrl = URL.createObjectURL(blob);
 
         // Use a hidden iframe so print() targets only the PDF
-        const iframe         = document.createElement('iframe');
+        const iframe = document.createElement('iframe');
         iframe.style.display = 'none';
-        iframe.src           = blobUrl;
+        iframe.src = blobUrl;
         document.body.appendChild(iframe);
 
         iframe.onload = () => {
@@ -448,42 +451,88 @@ export class Reports implements OnInit {
 
   // ══ EXPORT EMAIL ═════════════════════════════════
   exportEmail(): void {
-    const emailAddr = prompt('Enter email address to send the report:');
-    if (!emailAddr || !emailAddr.includes('@')) {
-      this.toast.show('Invalid email address', 'error');
-      return;
-    }
+   
+     this.emailInput = '';
+  this.showEmailModal = true; 
+  
+  // if (!emailInput || !emailInput.includes('@')) {
+  //     this.toast.show('Invalid email address', 'error');
+  //     return;
+  //   }
 
-    const tab       = this.activeTab;
-    const body: any = { email: emailAddr };
-    let endpoint    = '';
+  //   const tab = this.activeTab;
+  //   const body: any = { email: emailAddr };
+  //   let endpoint = '';
 
-    if (tab === 'task') {
-      endpoint = '/tasks/email';
-      if (this.taskFilters.status)   body['status']   = this.taskFilters.status;
-      if (this.taskFilters.priority) body['priority'] = this.taskFilters.priority;
-      if (this.taskFilters.dateFrom) body['dateFrom'] = this.taskFilters.dateFrom;
-      if (this.taskFilters.dateTo)   body['dateTo']   = this.taskFilters.dateTo;
-    } else if (tab === 'attendance') {
-      endpoint = '/attendance/email';
-      if (this.attFilters.employeeId) body['userId']    = Number(this.attFilters.employeeId);
-      if (this.attFilters.dateFrom)   body['startDate'] = this.attFilters.dateFrom;
-      if (this.attFilters.dateTo)     body['endDate']   = this.attFilters.dateTo;
-    } else {
-      endpoint = '/productivity/email';
-      if (this.selectedEmployee?.id)   body['userId']    = this.selectedEmployee.id;
-      if (this.prodFilters.dateFrom)   body['startDate'] = this.prodFilters.dateFrom;
-      if (this.prodFilters.dateTo)     body['endDate']   = this.prodFilters.dateTo;
-    }
+  //   if (tab === 'task') {
+  //     endpoint = '/tasks/email';
+  //     if (this.taskFilters.status) body['status'] = this.taskFilters.status;
+  //     if (this.taskFilters.priority) body['priority'] = this.taskFilters.priority;
+  //     if (this.taskFilters.dateFrom) body['dateFrom'] = this.taskFilters.dateFrom;
+  //     if (this.taskFilters.dateTo) body['dateTo'] = this.taskFilters.dateTo;
+  //   } else if (tab === 'attendance') {
+  //     endpoint = '/attendance/email';
+  //     if (this.attFilters.employeeId) body['userId'] = Number(this.attFilters.employeeId);
+  //     if (this.attFilters.dateFrom) body['startDate'] = this.attFilters.dateFrom;
+  //     if (this.attFilters.dateTo) body['endDate'] = this.attFilters.dateTo;
+  //   } else {
+  //     endpoint = '/productivity/email';
+  //     if (this.selectedEmployee?.id) body['userId'] = this.selectedEmployee.id;
+  //     if (this.prodFilters.dateFrom) body['startDate'] = this.prodFilters.dateFrom;
+  //     if (this.prodFilters.dateTo) body['endDate'] = this.prodFilters.dateTo;
+  //   }
 
-    this.api.post(endpoint, body).subscribe({
-      next: (res: any) => {
-        if (res.success) this.toast.show('Report sent to ' + emailAddr, 'success');
-        else             this.toast.show(res.message || 'Failed to send', 'error');
-      },
-      error: () => this.toast.show('Failed to send report', 'error')
-    });
+  //   this.api.post(endpoint, body).subscribe({
+  //     next: (res: any) => {
+  //       if (res.success) this.toast.show('Report sent to ' + emailAddr, 'success');
+  //       else this.toast.show(res.message || 'Failed to send', 'error');
+  //     },
+  //     error: () => this.toast.show('Failed to send report', 'error')
+  //   });
   }
+
+  sendEmailReport(): void {
+  if (!this.emailInput || !this.emailInput.includes('@')) {
+    this.toast.show('Invalid email address', 'error');
+    return;
+  }
+
+  const tab       = this.activeTab;
+  const body: any = { email: this.emailInput };
+  let endpoint    = '';
+
+  if (tab === 'task') {
+    endpoint = '/tasks/email';
+    if (this.taskFilters.status)   body['status']   = this.taskFilters.status;
+    if (this.taskFilters.priority) body['priority'] = this.taskFilters.priority;
+    if (this.taskFilters.dateFrom) body['dateFrom'] = this.taskFilters.dateFrom;
+    if (this.taskFilters.dateTo)   body['dateTo']   = this.taskFilters.dateTo;
+
+  } else if (tab === 'attendance') {
+    endpoint = '/attendance/email';
+    if (this.attFilters.employeeId) body['userId']    = Number(this.attFilters.employeeId);
+    if (this.attFilters.dateFrom)   body['startDate'] = this.attFilters.dateFrom;
+    if (this.attFilters.dateTo)     body['endDate']   = this.attFilters.dateTo;
+
+  } else {
+    endpoint = '/productivity/email';
+    if (this.selectedEmployee?.id)   body['userId']    = this.selectedEmployee.id;
+    if (this.prodFilters.dateFrom)   body['startDate'] = this.prodFilters.dateFrom;
+    if (this.prodFilters.dateTo)     body['endDate']   = this.prodFilters.dateTo;
+  }
+
+  this.api.post(endpoint, body).subscribe({
+    next: (res: any) => {
+      if (res.success) {
+        this.toast.show('Report sent to ' + this.emailInput, 'success');
+        this.showEmailModal = false;
+      } else {
+        this.toast.show(res.message || 'Failed to send', 'error');
+      }
+    },
+    error: () => this.toast.show('Failed to send report', 'error')
+  });
+}
 
   // ══ HELPERS ══════════════════════════════════════
   get filteredTasks(): any[] {
@@ -499,11 +548,11 @@ export class Reports implements OnInit {
     return r;
   }
 
-  getName(u: any): string       { return typeof u === 'object' ? (u?.name ?? '?') : (u ?? '?'); }
-  getInitial(u: any): string    { return this.getName(u).charAt(0).toUpperCase(); }
+  getName(u: any): string { return typeof u === 'object' ? (u?.name ?? '?') : (u ?? '?'); }
+  getInitial(u: any): string { return this.getName(u).charAt(0).toUpperCase(); }
   isOverdue(d: string): boolean { return !!d && new Date(d) < new Date(); }
-  fmtStatus(s: string): string  { return s ? s.split('_').join(' ') : '—'; }
-  fmtAction(a: string): string  { return a ? a.split('_').join(' ') : ''; }
+  fmtStatus(s: string): string { return s ? s.split('_').join(' ') : '—'; }
+  fmtAction(a: string): string { return a ? a.split('_').join(' ') : ''; }
 
   statusClass(s: string): string {
     const m: any = { PENDING: 's-amber', IN_PROGRESS: 's-teal', COMPLETED: 's-green', ON_HOLD: 's-purple', CANCELLED: 's-red' };
@@ -586,12 +635,12 @@ export class Reports implements OnInit {
 
   // ── Human-readable date range label shown in filter bar ──
   get activeDateRangeLabel(): string {
-    const f = this.activeTab === 'task'       ? this.taskFilters
-            : this.activeTab === 'attendance' ? this.attFilters
-            : this.prodFilters;
+    const f = this.activeTab === 'task' ? this.taskFilters
+      : this.activeTab === 'attendance' ? this.attFilters
+        : this.prodFilters;
     if (f.dateFrom && f.dateTo) return `${f.dateFrom}  →  ${f.dateTo}`;
-    if (f.dateFrom)              return `From ${f.dateFrom}`;
-    if (f.dateTo)                return `Until ${f.dateTo}`;
+    if (f.dateFrom) return `From ${f.dateFrom}`;
+    if (f.dateTo) return `Until ${f.dateTo}`;
     return '';
   }
 }
