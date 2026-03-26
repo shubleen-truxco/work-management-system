@@ -30,7 +30,6 @@ export class Messages implements OnInit, OnDestroy, AfterViewChecked {
   private token = sessionStorage.getItem('token') || '';
 
   private ws!: WebSocket;
-  // private wsUrl ='wss://raymonde-ungotten-honey.ngrok-free.dev/wms/ws/chat';
   private wsUrl = 'ws://localhost:8080/wms/ws/chat';
   private shouldScroll = false;
   private typingTimer: any;
@@ -51,6 +50,7 @@ export class Messages implements OnInit, OnDestroy, AfterViewChecked {
   isLoadingPeople = false;
   isUploadingFile = false;
   isUploadingAvatar = false;
+  isLoadingParticipants = false;   // ✅ NEW
   selectedChat: any = null;
   showNewChatModal = false;
   showGroupInfoModal = false;
@@ -64,6 +64,12 @@ export class Messages implements OnInit, OnDestroy, AfterViewChecked {
   filteredChats: any[] = [];
   showImageViewer = false;
   viewerImageUrl = '';
+  isCurrentUserAdmin = false;
+
+  // ✅ FIX: helper method for template (replaces broken class method)
+  asString(val: any): string {
+    return String(val ?? '');
+  }
 
   constructor(
     private api: ApiService,
@@ -161,7 +167,6 @@ export class Messages implements OnInit, OnDestroy, AfterViewChecked {
     };
   }
 
-  // ── Time only — used inside bubbles ──────────────────
   private formatMsgTime(iso: string): string {
     if (!iso) return '';
     try {
@@ -171,7 +176,6 @@ export class Messages implements OnInit, OnDestroy, AfterViewChecked {
     } catch { return ''; }
   }
 
-  // ── Date label for dividers ───────────────────────────
   private getDateLabel(iso: string): string {
     if (!iso) return 'Today';
     try {
@@ -187,7 +191,6 @@ export class Messages implements OnInit, OnDestroy, AfterViewChecked {
     } catch { return 'Today'; }
   }
 
-  // ── Build a date_divider object ───────────────────────
   private makeDivider(label: string): any {
     return {
       id: `divider_${label}_${Math.random()}`,
@@ -198,20 +201,12 @@ export class Messages implements OnInit, OnDestroy, AfterViewChecked {
     };
   }
 
-  // ── Inject date dividers into message list ────────────
   private injectDateDividers(messages: any[]): any[] {
     const result: any[] = [];
     let lastLabel = '';
-
     for (const msg of messages) {
-      // Skip already-injected dividers
       if (msg.isDivider) { result.push(msg); continue; }
-
-      if (msg.type === 'system') {
-        result.push(msg);
-        continue;
-      }
-
+      if (msg.type === 'system') { result.push(msg); continue; }
       const label = this.getDateLabel(msg.rawDate);
       if (label !== lastLabel) {
         result.push(this.makeDivider(label));
@@ -219,7 +214,6 @@ export class Messages implements OnInit, OnDestroy, AfterViewChecked {
       }
       result.push(msg);
     }
-
     return result;
   }
 
@@ -227,55 +221,38 @@ export class Messages implements OnInit, OnDestroy, AfterViewChecked {
   // FCM
   // ══════════════════════════════════════════════════════
 
-private initFcm(): void {
-  this.fcm.requestPermission();
+  private initFcm(): void {
+    this.fcm.requestPermission();
 
-  // Foreground message
-  this.fcm.listenForeground((payload) => {
-    const title = payload.notification?.title ?? 'New Message';
-    const body = payload.notification?.body ?? '';
-    const chatId = payload.data?.chatId;
+    this.fcm.listenForeground((payload) => {
+      const title = payload.notification?.title ?? 'New Message';
+      const body = payload.notification?.body ?? '';
+      const chatId = payload.data?.chatId;
+      this.toast.show(`${title}: ${body}`, 'info');
+      if (chatId && this.selectedChat?.chatId !== chatId) {
+        const chat = this.chats.find(c => c.chatId === chatId);
+        if (chat) {
+          chat.unreadCount = (chat.unreadCount || 0) + 1;
+          this.filterChats();
+        }
+      }
+    });
 
-    this.toast.show(`${title}: ${body}`, 'info');
-
-    // Increase unread if not opened
-    if (chatId && this.selectedChat?.chatId !== chatId) {
+    this.fcm.onNotificationClick((data: any) => {
+      const chatId = data?.chatId;
+      if (!chatId) return;
       const chat = this.chats.find(c => c.chatId === chatId);
       if (chat) {
-        chat.unreadCount = (chat.unreadCount || 0) + 1;
-        this.filterChats();
+        this.ngZone.run(() => this.selectChat(chat));
+      } else {
+        this.loadChatList();
+        setTimeout(() => {
+          const found = this.chats.find(c => c.chatId === chatId);
+          if (found) this.ngZone.run(() => this.selectChat(found));
+        }, 1000);
       }
-    }
-  });
-
-  // 🔥 NEW: Notification click handler
-  this.fcm.onNotificationClick((data: any) => {
-    console.log('🔔 Notification clicked:', data);
-
-    const chatId = data?.chatId;
-
-    if (!chatId) return;
-
-    // Find chat
-    const chat = this.chats.find(c => c.chatId === chatId);
-
-    if (chat) {
-      this.ngZone.run(() => {
-        this.selectChat(chat);
-      });
-    } else {
-      // If chat not loaded yet → reload list
-      this.loadChatList();
-
-      setTimeout(() => {
-        const found = this.chats.find(c => c.chatId === chatId);
-        if (found) {
-          this.ngZone.run(() => this.selectChat(found));
-        }
-      }, 1000);
-    }
-  });
-}
+    });
+  }
 
   // ══════════════════════════════════════════════════════
   // LAST READ
@@ -327,17 +304,20 @@ private initFcm(): void {
         if (data.type === 'pong') return;
 
         switch (data.event) {
-          case 'new_message': this.handleNewMessageEvent(data); break;
-          case 'message_ack': this.handleMessageAck(data); break;
+          case 'new_message':       this.handleNewMessageEvent(data); break;
+          case 'message_ack':       this.handleMessageAck(data); break;
           case 'message_delivered': this.handleDeliveredEvent(data); break;
-          case 'typing_start': this.handleTypingEvent(data, true); break;
-          case 'typing_stop': this.handleTypingEvent(data, false); break;
-          case 'message_seen': this.handleSeenEvent(data); break;
-          case 'seen_ack': break;
+          case 'typing_start':      this.handleTypingEvent(data, true); break;
+          case 'typing_stop':       this.handleTypingEvent(data, false); break;
+          case 'message_seen':      this.handleSeenEvent(data); break;
+          case 'seen_ack':          break;
           case 'user_online':
-          case 'user_offline': this.handleOnlineStatus(data); break;
-          case 'sync_required': this.loadChatList(); break;
-          case 'join_ack': break; 
+          case 'user_offline':      this.handleOnlineStatus(data); break;
+          case 'sync_required':     this.loadChatList(); break;
+          case 'join_ack':          break;
+          case 'member_left':       this.handleMemberLeft(data); break;
+          case 'member_removed':    this.handleMemberRemoved(data); break;
+          case 'you_were_removed':  this.handleYouWereRemoved(data); break;
           default: console.warn('⚠️ Unknown WS event:', data.event);
         }
       });
@@ -362,7 +342,7 @@ private initFcm(): void {
   }
 
   // ══════════════════════════════════════════════════════
-  // SOCKET EVENTS
+  // SOCKET EVENT HANDLERS
   // ══════════════════════════════════════════════════════
 
   handleMessageAck(data: any): void {
@@ -370,24 +350,20 @@ private initFcm(): void {
     const chat = this.chats.find(c => c.chatId === chatId);
     if (!chat) return;
 
-    // Update in chat.messages
     if (chat.messages) {
       chat.messages = chat.messages.map((m: any) => {
-        if (!m.isDivider && m.status === 'sending' && m.isOwn) {
+        if (!m.isDivider && m.status === 'sending' && m.isOwn)
           return { ...m, id: data.messageId, status: data.status || 'sent' };
-        }
         return m;
       });
     }
 
-    // Update in selectedChat
     if (this.selectedChat?.chatId === chatId && this.selectedChat.messages) {
       this.selectedChat = {
         ...this.selectedChat,
         messages: this.selectedChat.messages.map((m: any) => {
-          if (!m.isDivider && m.status === 'sending' && m.isOwn) {
+          if (!m.isDivider && m.status === 'sending' && m.isOwn)
             return { ...m, id: data.messageId, status: data.status || 'sent' };
-          }
           return m;
         }),
       };
@@ -401,16 +377,14 @@ private initFcm(): void {
 
     if (chat.messages) {
       chat.messages = chat.messages.map((m: any) =>
-        !m.isDivider && m.id === data.messageId
-          ? { ...m, status: 'delivered' } : m
+        !m.isDivider && m.id === data.messageId ? { ...m, status: 'delivered' } : m
       );
     }
     if (this.selectedChat?.chatId === data.chatId && this.selectedChat.messages) {
       this.selectedChat = {
         ...this.selectedChat,
         messages: this.selectedChat.messages.map((m: any) =>
-          !m.isDivider && m.id === data.messageId
-            ? { ...m, status: 'delivered' } : m
+          !m.isDivider && m.id === data.messageId ? { ...m, status: 'delivered' } : m
         ),
       };
     }
@@ -449,7 +423,6 @@ private initFcm(): void {
     const newMsg = this.mapMessage(msg, isOwn, isOwn || isChatOpen);
     const existingMsgs = [...(chat.messages || [])];
 
-    // Check if need new date divider
     const lastReal = [...existingMsgs].reverse()
       .find((m: any) => !m.isDivider && m.type !== 'system');
     const newLabel = this.getDateLabel(newMsg.rawDate);
@@ -461,8 +434,7 @@ private initFcm(): void {
 
     const updatedMsgs = [...existingMsgs, ...toAdd];
     const realMsgs = updatedMsgs.filter((m: any) => !m.isDivider);
-    const unreadCount = isOwn || isChatOpen
-      ? 0 : this.countUnread(realMsgs, chatId);
+    const unreadCount = isOwn || isChatOpen ? 0 : this.countUnread(realMsgs, chatId);
 
     const updatedChat = {
       ...chat,
@@ -482,9 +454,7 @@ private initFcm(): void {
     if (isChatOpen) {
       this.selectedChat = { ...updatedChat };
       this.shouldScroll = true;
-      if (!isOwn) {
-        this.api.markMessagesSeen(chatId, [msg.messageId]).subscribe();
-      }
+      if (!isOwn) this.api.markMessagesSeen(chatId, [msg.messageId]).subscribe();
     }
 
     if (isOwn || isChatOpen) this.saveLastRead(chatId, msg.messageId);
@@ -521,26 +491,16 @@ private initFcm(): void {
     }
   }
 
-  // ══════════════════════════════════════════════════════
-  // ✅ FIXED handleSeenEvent
-  // Updates BOTH chat.messages AND selectedChat.messages
-  // Then calls cdr.detectChanges() to force UI refresh
-  // ══════════════════════════════════════════════════════
-
   handleSeenEvent(data: any): void {
-    console.log('👁️ message_seen received:', data);
-
     const chatId = data.chatId;
     const messageIds = (data.messageIds ?? []).map((id: any) => Number(id));
     if (!chatId || messageIds.length === 0) return;
 
     const updateMsgs = (msgs: any[]) =>
       msgs.map((m: any) =>
-        !m.isDivider && messageIds.includes(Number(m.id))
-          ? { ...m, status: 'seen' } : m
+        !m.isDivider && messageIds.includes(Number(m.id)) ? { ...m, status: 'seen' } : m
       );
 
-    // Update chats array
     const chatIdx = this.chats.findIndex(c => c.chatId === chatId);
     if (chatIdx !== -1) {
       const chat = this.chats[chatIdx];
@@ -551,14 +511,12 @@ private initFcm(): void {
       ];
     }
 
-    // Update selectedChat
     if (this.selectedChat?.chatId === chatId) {
       this.selectedChat = {
         ...this.selectedChat,
         messages: updateMsgs(this.selectedChat.messages ?? []),
       };
     }
-
     this.cdr.detectChanges();
   }
 
@@ -567,6 +525,46 @@ private initFcm(): void {
     this.chats.forEach(c => {
       if (!c.isGroup && String(c.userId) === String(data.userId)) c.online = isOnline;
     });
+  }
+
+  // ── Someone left the group ────────────────────────────
+  handleMemberLeft(data: any): void {
+    this.appendSystemMessage(data.chatId, data.message ?? `${data.userName} left the group`);
+    this.loadChatList();
+    this.cdr.detectChanges();
+  }
+
+  // ── Admin removed someone ─────────────────────────────
+  handleMemberRemoved(data: any): void {
+    const chatId = data.chatId;
+    this.appendSystemMessage(chatId, data.message ?? `${data.removedName} was removed`);
+
+    if (this.selectedChat?.chatId === chatId) {
+      this.selectedChat = {
+        ...this.selectedChat,
+        participants: (this.selectedChat.participants ?? []).filter(
+          (p: any) => String(p.userId) !== String(data.removedUserId)
+        ),
+        members: (this.selectedChat.members ?? 1) - 1,
+      };
+    }
+    this.loadChatList();
+    this.cdr.detectChanges();
+  }
+
+  // ── Current user was removed ──────────────────────────
+  handleYouWereRemoved(data: any): void {
+    const chatId = data.chatId;
+    this.toast.show('You have been removed from the group', 'error');
+
+    if (this.selectedChat?.chatId === chatId) {
+      this.selectedChat = null;
+      this.closeGroupInfoModal();
+    }
+
+    this.chats = this.chats.filter(c => c.chatId !== chatId);
+    this.sortAndFilterChats();
+    this.cdr.detectChanges();
   }
 
   // ══════════════════════════════════════════════════════
@@ -585,9 +583,7 @@ private initFcm(): void {
           id: c.chatId,
           name: c.name,
           avatar: this.buildFileUrl(
-            c.avatar
-            ?? c.participants?.[0]?.avatar
-            ?? c.participants?.[0]?.profile
+            c.avatar ?? c.participants?.[0]?.avatar ?? c.participants?.[0]?.profile
           ),
           isGroup: c.type === 'group',
           online: c.participants?.[0]?.isOnline ?? false,
@@ -595,20 +591,27 @@ private initFcm(): void {
           lastMessageTime: c.lastMessage?.createdAt
             ? this.formatTime(c.lastMessage.createdAt) : '',
           unreadCount: c.unreadCount ?? 0,
-          members: c.participantsCount,
+          members: c.participantsCount ?? c.participants?.length ?? 0,
           lastSender: c.lastMessage?.senderName,
           isPinned: c.isPinned,
           isMuted: c.isMuted,
           updatedAt: c.updatedAt,
-          userId: c.type === 'individual'
-            ? String(c.participants?.[0]?.userId) : null,
+          userId: c.type === 'individual' ? String(c.participants?.[0]?.userId) : null,
           roomId: c.type === 'group' ? c.chatId : null,
-          participants: c.participants ?? [],
+          // ✅ Map participants properly
+          participants: (c.participants ?? []).map((p: any) => ({
+            userId: p.userId,
+            name: p.name,
+            role: p.role,
+            profile: this.buildFileUrl(p.avatar ?? p.profile ?? null),
+            isOnline: p.isOnline ?? false,
+          })),
           messages: [],
           historyLoaded: false,
           isTyping: false,
           typingPerson: null,
         }));
+
         this.employees = items
           .filter((c: any) => c.type === 'individual' && c.participants?.length)
           .map((c: any) => ({
@@ -616,6 +619,7 @@ private initFcm(): void {
             name: c.participants[0].name,
             role: c.participants[0].role || '',
           }));
+
         this.sortAndFilterChats();
         this.chats
           .filter(c => c.isGroup && c.chatId && this.ws?.readyState === WebSocket.OPEN)
@@ -639,15 +643,14 @@ private initFcm(): void {
       next: (res: any) => {
         this.isLoadingHistory = false;
         if (!res.success) return;
+
         const rawMsgs = (res.data?.items ?? []).map((m: any) => {
           const isOwn = String(m.sender?.userId) === String(this.currentUserId);
           return this.mapMessage(m, isOwn, true);
         });
 
-        // 2. Inject date dividers
         const withDividers = this.injectDateDividers(rawMsgs);
 
-        // 3. Update chat object
         const updatedChat = {
           ...chat,
           messages: withDividers,
@@ -655,7 +658,6 @@ private initFcm(): void {
           unreadCount: 0,
         };
 
-        // 4. Update chats array
         const idx = this.chats.findIndex(c => c.chatId === chat.chatId);
         if (idx !== -1) {
           this.chats = [
@@ -665,12 +667,10 @@ private initFcm(): void {
           ];
         }
 
-        // 5. Update selectedChat
         if (this.selectedChat?.chatId === chat.chatId) {
           this.selectedChat = { ...updatedChat };
         }
 
-        // 6. Mark seen
         const ids = rawMsgs
           .filter((m: any) => !m.isOwn && m.type !== 'system')
           .map((m: any) => m.id);
@@ -696,6 +696,68 @@ private initFcm(): void {
   }
 
   // ══════════════════════════════════════════════════════
+  // ✅ LOAD GROUP PARTICIPANTS — dedicated API call
+  // ══════════════════════════════════════════════════════
+
+  loadGroupParticipants(chatId: string): void {
+    this.isLoadingParticipants = true;
+
+    this.api.getGroupParticipants(chatId).subscribe({
+      next: (pRes: any) => {
+        this.isLoadingParticipants = false;
+        console.log('👥 Participants API response:', pRes);
+
+        if (!pRes.success) return;
+
+        // ✅ Handle both array directly or wrapped in data
+        const raw: any[] = Array.isArray(pRes.data) ? pRes.data : (pRes.data?.items ?? []);
+
+        const participants = raw.map((p: any) => ({
+          userId: p.userId ?? p.id,
+          name: p.name ?? `${p.firstName ?? ''} ${p.lastName ?? ''}`.trim() ?? 'Unknown',
+          role: p.role ?? 'member',
+          profile: this.buildFileUrl(p.profile ?? p.avatar ?? null),
+          isOnline: p.isOnline ?? false,
+        }));
+
+        console.log('✅ Mapped participants:', participants);
+
+        // ✅ Check if current user is admin
+        const me = participants.find(
+          (p: any) => String(p.userId) === String(this.currentUserId)
+        );
+        this.isCurrentUserAdmin = me?.role === 'admin';
+        console.log('👤 isCurrentUserAdmin:', this.isCurrentUserAdmin);
+
+        // ✅ Update selectedChat
+        if (this.selectedChat?.chatId === chatId) {
+          this.selectedChat = {
+            ...this.selectedChat,
+            participants,
+            members: participants.length,
+          };
+        }
+
+        // ✅ Update chats array
+        const chatIdx = this.chats.findIndex(c => c.chatId === chatId);
+        if (chatIdx !== -1) {
+          this.chats = [
+            ...this.chats.slice(0, chatIdx),
+            { ...this.chats[chatIdx], participants, members: participants.length },
+            ...this.chats.slice(chatIdx + 1),
+          ];
+        }
+
+        this.cdr.detectChanges();
+      },
+      error: (err: any) => {
+        this.isLoadingParticipants = false;
+        console.error('❌ Participants API error:', err);
+      }
+    });
+  }
+
+  // ══════════════════════════════════════════════════════
   // SELECT CHAT
   // ══════════════════════════════════════════════════════
 
@@ -703,6 +765,7 @@ private initFcm(): void {
     this.selectedChat = { ...chat, unreadCount: 0 };
     this.isTyping = chat.isTyping ?? false;
     this.typingPerson = chat.typingPerson ?? '';
+    this.isCurrentUserAdmin = false;
 
     const idx = this.chats.findIndex(c => c.chatId === chat.chatId);
     if (idx !== -1) {
@@ -711,6 +774,11 @@ private initFcm(): void {
         { ...this.chats[idx], unreadCount: 0 },
         ...this.chats.slice(idx + 1),
       ];
+    }
+
+    // ✅ Always fetch fresh participants for group
+    if (chat.isGroup) {
+      this.loadGroupParticipants(chat.chatId);
     }
 
     this.loadChatHistory(this.selectedChat);
@@ -789,10 +857,7 @@ private initFcm(): void {
       msgType: 'text',
       tempId,
     }));
-    this.ws.send(JSON.stringify({
-      type: 'typing_stop',
-      chatId: this.selectedChat.chatId,
-    }));
+    this.ws.send(JSON.stringify({ type: 'typing_stop', chatId: this.selectedChat.chatId }));
   }
 
   // ══════════════════════════════════════════════════════
@@ -910,9 +975,7 @@ private initFcm(): void {
           if (res.success && res.data?.url) {
             const fullUrl = this.buildFileUrl(res.data.url);
             this.selectedChat = { ...this.selectedChat, avatar: fullUrl };
-            const chatIdx = this.chats.findIndex(
-              c => c.chatId === this.selectedChat.chatId
-            );
+            const chatIdx = this.chats.findIndex(c => c.chatId === this.selectedChat.chatId);
             if (chatIdx !== -1) {
               this.chats = [
                 ...this.chats.slice(0, chatIdx),
@@ -954,6 +1017,8 @@ private initFcm(): void {
     if (!this.selectedChat?.isGroup) return;
     this.editGroupName = this.selectedChat.name;
     this.showGroupInfoModal = true;
+    // ✅ Re-fetch participants every time modal opens (fresh data)
+    this.loadGroupParticipants(this.selectedChat.chatId);
   }
 
   closeGroupInfoModal(): void {
@@ -981,19 +1046,47 @@ private initFcm(): void {
   leaveGroup(): void {
     if (!this.selectedChat?.isGroup) return;
     if (!confirm('Are you sure you want to leave this group?')) return;
-    this.api.removeParticipant(
-      this.selectedChat.chatId, Number(this.currentUserId)
-    ).subscribe({
-      next: (res: any) => {
-        if (res.success) {
-          this.toast.show('You left the group', 'success');
-          this.selectedChat = null;
-          this.closeGroupInfoModal();
-          this.loadChatList();
-        }
-      },
-      error: () => this.toast.show('Failed to leave group', 'error')
-    });
+
+    if (this.ws?.readyState === WebSocket.OPEN) {
+      this.ws.send(JSON.stringify({
+        type: 'leave_group',
+        chatId: this.selectedChat.chatId,
+      }));
+    }
+
+    const chatId = this.selectedChat.chatId;
+    this.toast.show('You left the group', 'success');
+    this.selectedChat = null;
+    this.closeGroupInfoModal();
+    this.chats = this.chats.filter(c => c.chatId !== chatId);
+    this.sortAndFilterChats();
+    this.cdr.detectChanges();
+  }
+
+  // ✅ Remove member (admin only)
+  removeMember(participant: any): void {
+    if (!this.selectedChat?.isGroup || !this.isCurrentUserAdmin) return;
+    if (String(participant.userId) === String(this.currentUserId)) return;
+
+    if (!confirm(`Remove ${participant.name} from the group?`)) return;
+
+    if (this.ws?.readyState === WebSocket.OPEN) {
+      this.ws.send(JSON.stringify({
+        type: 'remove_member',
+        chatId: this.selectedChat.chatId,
+        targetUserId: participant.userId,
+      }));
+    }
+
+    // Optimistic update
+    this.selectedChat = {
+      ...this.selectedChat,
+      participants: this.selectedChat.participants.filter(
+        (p: any) => String(p.userId) !== String(participant.userId)
+      ),
+      members: (this.selectedChat.members ?? 1) - 1,
+    };
+    this.cdr.detectChanges();
   }
 
   // ══════════════════════════════════════════════════════
@@ -1008,6 +1101,41 @@ private initFcm(): void {
       if (this.ws?.readyState === WebSocket.OPEN)
         this.ws.send(JSON.stringify({ type: 'typing_stop', chatId: this.selectedChat.chatId }));
     }, 2000);
+  }
+
+  // ══════════════════════════════════════════════════════
+  // APPEND SYSTEM MESSAGE
+  // ══════════════════════════════════════════════════════
+
+  private appendSystemMessage(chatId: string, text: string): void {
+    const now = new Date().toISOString();
+    const sysMsg = {
+      id: `sys_${Date.now()}`,
+      type: 'system',
+      text,
+      rawDate: now,
+      time: this.formatMsgTime(now),
+      isOwn: false,
+      isDivider: false,
+    };
+
+    const chatIdx = this.chats.findIndex(c => c.chatId === chatId);
+    if (chatIdx !== -1) {
+      const chat = this.chats[chatIdx];
+      this.chats = [
+        ...this.chats.slice(0, chatIdx),
+        { ...chat, messages: [...(chat.messages ?? []), sysMsg] },
+        ...this.chats.slice(chatIdx + 1),
+      ];
+    }
+
+    if (this.selectedChat?.chatId === chatId) {
+      this.selectedChat = {
+        ...this.selectedChat,
+        messages: [...(this.selectedChat.messages ?? []), sysMsg],
+      };
+      this.shouldScroll = true;
+    }
   }
 
   // ══════════════════════════════════════════════════════
@@ -1119,8 +1247,7 @@ private initFcm(): void {
     if (this.searchChat.trim()) {
       const q = this.searchChat.toLowerCase();
       list = list.filter(c =>
-        c.name?.toLowerCase().includes(q) ||
-        c.lastMessage?.toLowerCase().includes(q)
+        c.name?.toLowerCase().includes(q) || c.lastMessage?.toLowerCase().includes(q)
       );
     }
     if (this.activeFilter === 'unread') list = list.filter(c => c.unreadCount > 0);
@@ -1146,7 +1273,6 @@ private initFcm(): void {
     return this.chats.filter(c => c.unreadCount > 0).length;
   }
 
-  // ── trackBy for *ngFor ────────────────────────────────
   trackByMsgId(index: number, msg: any): any {
     return msg.isDivider ? msg.id : (msg.id ?? index);
   }
@@ -1199,7 +1325,6 @@ private initFcm(): void {
     } catch { }
   }
 
-  // ── Chat list last-message time ───────────────────────
   formatTime(iso: string): string {
     if (!iso) return '';
     try {

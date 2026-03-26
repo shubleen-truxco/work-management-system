@@ -17,6 +17,10 @@ export class ApiService {
   // AUTH
   // ══════════════════════════════════════════════════════
 
+  getDashboardStats() {
+    return this.http.get('/api/dashboard/stats');
+  }
+
   login(payload: any = {}): Observable<any> {
     return this.http.post(`${this.baseUrl}/login`, payload);
   }
@@ -208,6 +212,11 @@ export class ApiService {
     return this.http.post(`${this.chatV1}/messages/seen`, { chatId, messageIds });
   }
 
+  getGroupParticipants(chatId: string): Observable<any> {
+    return this.http.get(`${this.chatV1}/participants?chatId=${chatId}`, {
+    });
+  }
+
   addParticipants(chatId: string, participantIds: number[]): Observable<any> {
     return this.http.post(
       `${this.chatV1}/${chatId}/participants`, { participantIds }
@@ -220,7 +229,7 @@ export class ApiService {
 
   updateGroupInfo(chatId: string,
     name?: string, avatar?: string): Observable<any> {
-    return this.http.patch(`${this.chatV1}/${chatId}`, { name, avatar });
+    return this.http.post(`${this.chatV1}/${chatId}`, { name, avatar });
   }
 
   saveFcmToken(data: any) {
@@ -262,6 +271,12 @@ export class ApiService {
     });
   }
 
+
+  // ── Add comment to a task ─────────────────────────────────────────
+  addTaskComment(taskId: number, comment: string): Observable<any> {
+    return this.http.post(`${this.baseUrl}/task-comment`, { taskId, comment });
+  }
+
   getActivityQuery(params: { module?: string; id?: string; page?: number; size?: number }): Observable<any> {
     const query = new URLSearchParams();
     if (params.module) query.set('module', params.module);
@@ -269,11 +284,6 @@ export class ApiService {
     if (params.page) query.set('page', String(params.page));
     if (params.size) query.set('size', String(params.size ?? 50));
     return this.http.get(`${this.baseUrl}/activity/query?${query.toString()}`);
-  }
-
-  // ── Add comment to a task ─────────────────────────────────────────
-  addTaskComment(taskId: number, comment: string): Observable<any> {
-    return this.http.post(`${this.baseUrl}/task-comment`, { taskId, comment });
   }
 
 

@@ -1696,3 +1696,31 @@
   color:        var(--color-text-muted);
   font-size:    var(--text-sm);
 }
+
+.remove-member-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #ef4444;
+  display: flex;
+  align-items: center;
+  padding: 4px;
+  border-radius: 6px;
+  transition: background 0.2s;
+}
+
+.remove-member-btn:hover {
+  background: #fee2e2;
+}
+
+.remove-member-btn .material-icons {
+  font-size: 18px;
+}
+
+.member-actions { display: flex; align-items: center; gap: 6px; margin-left: auto; }
+.remove-member-btn { background: none; border: none; cursor: pointer; color: #ef4444; display: flex; align-items: center; padding: 4px; border-radius: 6px; transition: background 0.2s; }
+.remove-member-btn:hover { background: #fee2e2; }
+.remove-member-btn .material-icons { font-size: 18px; }
+.you-label { font-size: 11px; color: #94a3b8; }
+.admin-badge { margin-left: auto; font-size: 11px; color: #0891b2; display: flex; align-items: center; gap: 3px; }
+.members-loading { display: flex; align-items: center; gap: 8px; padding: 16px; color: #94a3b8; }
