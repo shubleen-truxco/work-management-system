@@ -202,6 +202,17 @@
                     *ngIf="selectedChat.isGroup && msg.sender">
                     {{ msg.sender }}
                   </span>
+                  <div class="reply-quote received-quote" *ngIf="msg.replyTo">
+                    <span class="reply-quote-sender">{{ msg.replyTo.senderName }}</span>
+                    <span class="reply-quote-text">
+                      <span *ngIf="msg.replyTo.type === 'image'">📷 Photo</span>
+                      <span *ngIf="msg.replyTo.type === 'file'">📎 File</span>
+                      <span *ngIf="msg.replyTo.type !== 'image' && msg.replyTo.type !== 'file'">
+                        {{ msg.replyTo.text }}
+                      </span>
+                    </span>
+                  </div>
+
                   <div class="message-bubble received image-bubble"
                     *ngIf="isImageMessage(msg)">
                     <img *ngIf="getFileUrl(msg)" [src]="getFileUrl(msg)"
@@ -226,10 +237,13 @@
                     *ngIf="!isImageMessage(msg) && !isFileMessage(msg)">
                     <p class="msg-text">{{ msg.text }}</p>
                   </div>
-                  <span class="msg-time"
+                  <div class="msg-row-footer"
                     *ngIf="!isImageMessage(msg) && !isFileMessage(msg)">
-                    {{ msg.time }}
-                  </span>
+                    <span class="msg-time">{{ msg.time }}</span>
+                    <button class="reply-btn" (click)="setReply(msg)" title="Reply">
+                      <span class="material-icons">reply</span>
+                    </button>
+                  </div>
                 </div>
               </div>
 
@@ -237,6 +251,18 @@
               <div class="message-row sent"
                 *ngIf="!msg.isDivider && msg.isOwn && msg.type !== 'system'">
                 <div class="message-bubble-wrap">
+
+                  <div class="reply-quote sent-quote" *ngIf="msg.replyTo">
+                    <span class="reply-quote-sender">{{ msg.replyTo.senderName }}</span>
+                    <span class="reply-quote-text">
+                      <span *ngIf="msg.replyTo.type === 'image'">📷 Photo</span>
+                      <span *ngIf="msg.replyTo.type === 'file'">📎 File</span>
+                      <span *ngIf="msg.replyTo.type !== 'image' && msg.replyTo.type !== 'file'">
+                        {{ msg.replyTo.text }}
+                      </span>
+                    </span>
+                  </div>
+
                   <div class="message-bubble sent image-bubble" *ngIf="isImageMessage(msg)">
                     <img *ngIf="getFileUrl(msg)" [src]="getFileUrl(msg)"
                       [alt]="getFileName(msg.text)" class="msg-image"
@@ -271,6 +297,9 @@
                   </div>
                   <div class="msg-meta"
                     *ngIf="!isImageMessage(msg) && !isFileMessage(msg)">
+                    <button class="reply-btn" (click)="setReply(msg)" title="Reply">
+                      <span class="material-icons">reply</span>
+                    </button>
                     <span class="msg-time">{{ msg.time }}</span>
                     <span class="material-icons msg-status"
                       [style.color]="msg.status === 'seen' ? '#0891b2' : '#94a3b8'">
@@ -302,8 +331,22 @@
 
         </div>
 
+        <!-- REPLY PREVIEW BAR -->
+        <div class="reply-bar" *ngIf="replyingTo">
+          <div class="reply-bar-content">
+            <span class="material-icons reply-bar-icon">reply</span>
+            <div class="reply-bar-info">
+              <span class="reply-bar-sender">{{ replyingTo.sender }}</span>
+              <span class="reply-bar-text">{{ getReplyPreviewText(replyingTo) }}</span>
+            </div>
+          </div>
+          <button class="reply-bar-cancel" (click)="cancelReply()" title="Cancel reply">
+            <span class="material-icons">close</span>
+          </button>
+        </div>
+
         <!-- Message Input -->
-        <div class="message-input-area">
+        <div class="message-input-area" [class.has-reply]="replyingTo">
 
           <input #fileInput type="file" hidden multiple
             accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt,.zip"
@@ -498,6 +541,57 @@
         </div>
       </div>
 
+      <!-- ══════ ADD MEMBER SECTION (admin only) ══════ -->
+      <div class="view-section" *ngIf="isCurrentUserAdmin">
+        <div class="view-section-title">
+          <span class="material-icons">person_add</span>
+          Add Member
+        </div>
+
+        <div class="add-member-search-wrap">
+          <div class="input-wrap">
+            <span class="material-icons input-icon">search</span>
+            <input
+              class="form-input"
+              type="text"
+              placeholder="Search employees to add..."
+              [(ngModel)]="addMemberSearch"
+              (input)="onAddMemberSearchInput()" />
+          </div>
+        </div>
+
+        <!-- Search results -->
+        <div class="add-member-loading" *ngIf="isSearchingMembers">
+          <span class="material-icons spin">sync</span>
+          <span>Searching...</span>
+        </div>
+
+        <div class="add-member-results" *ngIf="!isSearchingMembers && addMemberResults.length > 0">
+          <div class="add-member-item" *ngFor="let emp of addMemberResults">
+            <div class="member-avatar">{{ (emp.name || '?').charAt(0).toUpperCase() }}</div>
+            <div class="member-info">
+              <span class="member-name">{{ emp.name }}</span>
+              <span class="member-role">{{ emp.role || 'Employee' }}</span>
+            </div>
+            <button
+              class="add-member-btn"
+              (click)="addMemberToGroup(emp)"
+              [disabled]="isAddingMember === emp.id"
+              title="Add to group">
+              <span class="material-icons">
+                {{ isAddingMember === emp.id ? 'hourglass_top' : 'person_add' }}
+              </span>
+            </button>
+          </div>
+        </div>
+
+        <div class="add-member-empty"
+          *ngIf="!isSearchingMembers && addMemberSearch.trim() && addMemberResults.length === 0">
+          <span class="material-icons">person_off</span>
+          <span>No employees found or all are already members</span>
+        </div>
+      </div>
+
       <!-- Members Section -->
       <div class="view-section">
         <div class="view-section-title">
@@ -506,13 +600,11 @@
           <span class="member-count-badge">
             {{ selectedChat.members || selectedChat.participants?.length || 0 }}
           </span>
-          <!-- ✅ Admin badge -->
           <span class="admin-badge" *ngIf="isCurrentUserAdmin">
             <span class="material-icons" style="font-size:14px">verified</span> You are admin
           </span>
         </div>
 
-        <!-- ✅ Loading state for participants -->
         <div class="members-loading" *ngIf="isLoadingParticipants">
           <span class="material-icons spin">sync</span>
           <span>Loading members...</span>
@@ -520,17 +612,14 @@
 
         <div class="members-list" *ngIf="!isLoadingParticipants">
 
-          <!-- ✅ FIXED member item — no String() in template, use asString() -->
           <div class="member-item" *ngFor="let p of selectedChat.participants">
 
-            <!-- Avatar -->
             <img *ngIf="p.profile" [src]="p.profile" class="member-avatar-img"
               (error)="onImageError($event)" />
             <div class="member-avatar" *ngIf="!p.profile">
               {{ (p.name || '?').charAt(0).toUpperCase() }}
             </div>
 
-            <!-- Info -->
             <div class="member-info">
               <span class="member-name">
                 {{ p.name }}
@@ -544,14 +633,11 @@
               </span>
             </div>
 
-            <!-- Actions -->
             <div class="member-actions">
-              <!-- Online / Offline indicator -->
               <span class="online-dot" *ngIf="p.isOnline" title="Online"></span>
               <span class="offline-label"
                 *ngIf="!p.isOnline && !isCurrentUserAdmin">Offline</span>
 
-              <!-- ✅ Remove button — admin only, not for self -->
               <button class="remove-member-btn"
                 *ngIf="isCurrentUserAdmin && asString(p.userId) !== asString(currentUserId)"
                 (click)="removeMember(p)"
@@ -562,7 +648,6 @@
 
           </div>
 
-          <!-- Empty state -->
           <div class="members-empty" *ngIf="!selectedChat.participants?.length">
             <span class="material-icons">group_off</span>
             <p>No member info available</p>

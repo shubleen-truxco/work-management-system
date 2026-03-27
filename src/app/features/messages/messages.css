@@ -1724,3 +1724,426 @@
 .you-label { font-size: 11px; color: #94a3b8; }
 .admin-badge { margin-left: auto; font-size: 11px; color: #0891b2; display: flex; align-items: center; gap: 3px; }
 .members-loading { display: flex; align-items: center; gap: 8px; padding: 16px; color: #94a3b8; }
+
+/* ═══════════════════════════════════════════════════════════════
+   REPLY FEATURE STYLES — add these to your existing messages.css
+═══════════════════════════════════════════════════════════════ */
+
+/* ── Reply button on each message ─────────────────────────── */
+.reply-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #94a3b8;
+  padding: 2px 4px;
+  border-radius: 4px;
+  opacity: 0;
+  transition: opacity 0.15s ease, color 0.15s ease, background 0.15s ease;
+  line-height: 1;
+}
+
+.reply-btn .material-icons {
+  font-size: 16px;
+}
+
+.reply-btn:hover {
+  color: #0891b2;
+  background: rgba(8, 145, 178, 0.08);
+}
+
+/* Show reply button on hover over the message row */
+.message-row:hover .reply-btn {
+  opacity: 1;
+}
+
+/* Keep footer row aligned with reply btn */
+.msg-row-footer {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 2px;
+}
+
+/* Adjust sent msg-meta to include reply btn */
+.message-row.sent .msg-meta {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  justify-content: flex-end;
+}
+
+/* ── Quoted reply bubble inside message ────────────────────── */
+.reply-quote {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 6px 10px;
+  border-radius: 8px 8px 0 0;
+  margin-bottom: 2px;
+  max-width: 320px;
+  position: relative;
+  overflow: hidden;
+}
+
+.reply-quote::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  border-radius: 3px 0 0 3px;
+}
+
+/* Received message reply quote */
+.received-quote {
+  background: rgba(0, 0, 0, 0.06);
+  border-radius: 8px;
+}
+
+.received-quote::before {
+  background: #0891b2;
+}
+
+/* Sent message reply quote */
+.sent-quote {
+  background: rgba(255, 255, 255, 0.18);
+  border-radius: 8px;
+  align-self: flex-end;
+}
+
+.sent-quote::before {
+  background: #02303b;
+}
+
+.reply-quote-sender {
+  font-size: 11px;
+  font-weight: 700;
+  color: #0891b2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sent-quote .reply-quote-sender {
+  color: #02303b;
+}
+
+.reply-quote-text {
+  font-size: 12px;
+  color: #64748b;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 280px;
+}
+
+.sent-quote .reply-quote-text {
+  color: rgba(0, 0, 0, 0.7);
+}
+
+/* ── Reply bar above the input ─────────────────────────────── */
+.reply-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 14px;
+  background: #e9f3f5;
+  border-top: 1px solid #e2e8f0;
+  border-left: 3px solid #0891b2;
+  gap: 8px;
+  animation: replyBarSlideIn 0.15s ease;
+}
+
+@keyframes replyBarSlideIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.reply-bar-content {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  flex: 1;
+}
+
+.reply-bar-icon {
+  font-size: 18px;
+  color: #0891b2;
+  flex-shrink: 0;
+}
+
+.reply-bar-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.reply-bar-sender {
+  font-size: 11px;
+  font-weight: 700;
+  color: #0891b2;
+}
+
+.reply-bar-text {
+  font-size: 12px;
+  color: #64748b;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 300px;
+}
+
+.reply-bar-cancel {
+  background: none;
+  border: none;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #94a3b8;
+  border-radius: 50%;
+  padding: 4px;
+  transition: background 0.15s ease, color 0.15s ease;
+  flex-shrink: 0;
+}
+
+.reply-bar-cancel:hover {
+  background: rgba(0, 0, 0, 0.06);
+  color: #475569;
+}
+
+.reply-bar-cancel .material-icons {
+  font-size: 18px;
+}
+
+/* Slightly lift border when reply bar is showing */
+.message-input-area.has-reply {
+  border-top: none;
+}
+
+.view-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+ 
+.view-section-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #475569;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid #f0f4f8;
+}
+ 
+.view-section-title .material-icons {
+  font-size: 16px !important;
+  color: #0891b2;
+}
+
+.member-count-badge {
+  background: #e0f2fe;
+  color: #0891b2;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 10px;
+  min-width: 20px;
+  text-align: center;
+}
+ 
+.admin-badge {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 11px;
+  color: #f59e0b;
+  font-weight: 600;
+  background: #fef3c7;
+  padding: 2px 8px;
+  border-radius: 10px;
+  margin-left: auto;
+}
+ 
+/* Members list */
+.members-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: #94a3b8;
+  font-size: 13px;
+  padding: 12px 0;
+}
+ 
+.members-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+ 
+.member-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  transition: background 0.1s;
+}
+ 
+.member-item:hover {
+  background: #f8fafc;
+}
+ 
+.member-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #0891b2 0%, #0e7490 100%);
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+ 
+.member-avatar-img {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+ 
+.member-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+ 
+.member-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: #1e293b;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+ 
+.member-role {
+  font-size: 11px;
+  color: #64748b;
+}
+
+ 
+.add-member-search-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+ 
+.add-member-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: #94a3b8;
+  font-size: 13px;
+  padding: 10px 0;
+}
+ 
+.add-member-results {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-height: 200px;
+  overflow-y: auto;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  background: #ffffff;
+}
+ 
+.add-member-results::-webkit-scrollbar {
+  width: 4px;
+}
+ 
+.add-member-results::-webkit-scrollbar-thumb {
+  background: #e2e8f0;
+  border-radius: 4px;
+}
+ 
+.add-member-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  transition: background 0.1s;
+  border-radius: 8px;
+}
+ 
+.add-member-item:hover {
+  background: #f8fafc;
+}
+ 
+.add-member-btn {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: none;
+  background: #e0f2fe;
+  color: #0891b2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.15s, color 0.15s, transform 0.1s;
+}
+ 
+.add-member-btn:hover:not(:disabled) {
+  background: #0891b2;
+  color: #ffffff;
+}
+ 
+.add-member-btn:active:not(:disabled) {
+  transform: scale(0.9);
+}
+ 
+.add-member-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+ 
+.add-member-btn .material-icons {
+  font-size: 15px;
+}
+ 
+.add-member-empty {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #94a3b8;
+  font-size: 12px;
+  padding: 8px 4px;
+}
+ 
+.add-member-empty .material-icons {
+  font-size: 16px;
+  color: #cbd5e1;
+}
+ 
+ 

@@ -87,7 +87,7 @@ export class ApiService {
 
   getAttendanceReport(startDate: string, endDate: string): Observable<any> {
     return this.http.post(
-      `${this.baseUrl}/report?startDate=${startDate}&endDate=${endDate}`,
+      `${this.baseUrl}/attendance-list?startDate=${startDate}&endDate=${endDate}`,
       {}
     );
   }

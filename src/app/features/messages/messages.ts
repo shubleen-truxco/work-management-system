@@ -24,6 +24,7 @@ export class Messages implements OnInit, OnDestroy, AfterViewChecked {
   @ViewChild('messagesArea') messagesArea!: ElementRef;
   @ViewChild('fileInput') fileInput!: ElementRef;
   @ViewChild('avatarInput') avatarInput!: ElementRef;
+  @ViewChild('messageInput') messageInput!: ElementRef;
 
   currentUserId = sessionStorage.getItem('id') || '';
   currentUserName = sessionStorage.getItem('user') || 'Me';
@@ -50,7 +51,7 @@ export class Messages implements OnInit, OnDestroy, AfterViewChecked {
   isLoadingPeople = false;
   isUploadingFile = false;
   isUploadingAvatar = false;
-  isLoadingParticipants = false;   // ✅ NEW
+  isLoadingParticipants = false;
   selectedChat: any = null;
   showNewChatModal = false;
   showGroupInfoModal = false;
@@ -66,7 +67,16 @@ export class Messages implements OnInit, OnDestroy, AfterViewChecked {
   viewerImageUrl = '';
   isCurrentUserAdmin = false;
 
-  // ✅ FIX: helper method for template (replaces broken class method)
+  // ── Reply-to state ────────────────────────────────────
+  replyingTo: any = null;
+
+  // ── Add Member state ──────────────────────────────────
+  addMemberSearch = '';
+  addMemberResults: any[] = [];
+  isSearchingMembers = false;
+  isAddingMember: string | null = null; // holds the emp.id being added
+  private addMemberDebounce: any = null;
+
   asString(val: any): string {
     return String(val ?? '');
   }
@@ -93,6 +103,7 @@ export class Messages implements OnInit, OnDestroy, AfterViewChecked {
     if (this.ws) this.ws.close();
     if (this.pingInterval) clearInterval(this.pingInterval);
     if (this.typingTimer) clearTimeout(this.typingTimer);
+    if (this.addMemberDebounce) clearTimeout(this.addMemberDebounce);
     this.typingTimeouts.forEach(t => clearTimeout(t));
     this.typingTimeouts.clear();
     this.fcm.removeToken();
@@ -103,6 +114,181 @@ export class Messages implements OnInit, OnDestroy, AfterViewChecked {
       this.scrollToBottom();
       this.shouldScroll = false;
     }
+  }
+
+  // ══════════════════════════════════════════════════════
+  // REPLY-TO HELPERS
+  // ══════════════════════════════════════════════════════
+
+  setReply(msg: any): void {
+    this.replyingTo = msg;
+    this.cdr.detectChanges();
+    setTimeout(() => this.messageInput?.nativeElement?.focus(), 0);
+  }
+
+  cancelReply(): void {
+    this.replyingTo = null;
+    this.cdr.detectChanges();
+  }
+
+  getReplyPreviewText(msg: any): string {
+    if (!msg) return '';
+    if (msg.replyTo) {
+      return this.truncate(msg.replyTo.text || '', 80);
+    }
+    if (msg.type === 'image' || msg.text?.startsWith('[Image]')) return '📷 Photo';
+    if (msg.type === 'file'  || msg.text?.startsWith('[File]'))  return '📎 File';
+    return this.truncate(msg.text || '', 80);
+  }
+
+  private truncate(text: string, max: number): string {
+    return text.length > max ? text.substring(0, max) + '…' : text;
+  }
+
+  // ══════════════════════════════════════════════════════
+  // ADD MEMBER
+  // ══════════════════════════════════════════════════════
+
+  /** Called on every keystroke in the add-member search input (debounced) */
+  onAddMemberSearchInput(): void {
+    if (this.addMemberDebounce) clearTimeout(this.addMemberDebounce);
+    const q = this.addMemberSearch.trim();
+    if (!q) {
+      this.addMemberResults = [];
+      this.isSearchingMembers = false;
+      return;
+    }
+    this.addMemberDebounce = setTimeout(() => this.searchEmployeesToAdd(q), 350);
+  }
+
+  /** Filter the loaded employees list against existing participants */
+  private searchEmployeesToAdd(query: string): void {
+    if (!this.selectedChat) return;
+    this.isSearchingMembers = true;
+
+    // Collect current participant IDs for quick lookup
+    const existingIds = new Set(
+      (this.selectedChat.participants ?? []).map((p: any) => String(p.userId))
+    );
+
+    // Filter from already-loaded employees list (no extra API call needed)
+    const lower = query.toLowerCase();
+    this.addMemberResults = this.employees.filter(emp =>
+      !existingIds.has(String(emp.id)) &&
+      (emp.name?.toLowerCase().includes(lower) || emp.role?.toLowerCase().includes(lower))
+    );
+
+    this.isSearchingMembers = false;
+    this.cdr.detectChanges();
+  }
+
+  /** Send add_member WS event */
+  addMemberToGroup(emp: any): void {
+    if (!this.selectedChat?.isGroup || !this.isCurrentUserAdmin) return;
+    if (this.ws?.readyState !== WebSocket.OPEN) {
+      this.toast.show('Not connected. Retrying...', 'error');
+      this.connectWebSocket();
+      return;
+    }
+
+    this.isAddingMember = emp.id;
+    this.cdr.detectChanges();
+
+    this.ws.send(JSON.stringify({
+      type: 'add_member',
+      chatId: this.selectedChat.chatId,
+      targetUserId: Number(emp.id),
+    }));
+  }
+
+  /** Handle ACK from server after add_member succeeds */
+  private handleAddMemberAck(data: any): void {
+    const chatId = data.chatId;
+    const userId = String(data.userId);
+
+    // Clear loading state — find the emp whose id matches
+    const addedEmp = this.addMemberResults.find(e => String(e.id) === userId);
+    this.isAddingMember = null;
+
+    if (!addedEmp) {
+      // Refresh participants to get the full info
+      if (this.selectedChat?.chatId === chatId) {
+        this.loadGroupParticipants(chatId);
+      }
+      this.cdr.detectChanges();
+      return;
+    }
+
+    // Optimistically add the new participant to the list
+    const newParticipant = {
+      userId: Number(userId),
+      name: addedEmp.name,
+      role: 'member',
+      profile: null,
+      isOnline: false,
+    };
+
+    if (this.selectedChat?.chatId === chatId) {
+      this.selectedChat = {
+        ...this.selectedChat,
+        participants: [...(this.selectedChat.participants ?? []), newParticipant],
+        members: (this.selectedChat.members ?? 0) + 1,
+      };
+    }
+
+    // Update chats array
+    const chatIdx = this.chats.findIndex(c => c.chatId === chatId);
+    if (chatIdx !== -1) {
+      this.chats = [
+        ...this.chats.slice(0, chatIdx),
+        {
+          ...this.chats[chatIdx],
+          members: (this.chats[chatIdx].members ?? 0) + 1,
+          participants: [...(this.chats[chatIdx].participants ?? []), newParticipant],
+        },
+        ...this.chats.slice(chatIdx + 1),
+      ];
+    }
+
+    // Remove the added person from search results
+    this.addMemberResults = this.addMemberResults.filter(e => String(e.id) !== userId);
+    this.addMemberSearch = '';
+
+    this.toast.show(`${addedEmp.name} added to the group`, 'success');
+    this.cdr.detectChanges();
+  }
+
+  /** Handle broadcast when someone else was added to a group I'm in */
+  private handleMemberAdded(data: any): void {
+    const chatId = data.chatId;
+    const message = data.message ?? 'A new member was added';
+
+    this.appendSystemMessage(chatId, message);
+
+    // Reload participants so the new member appears
+    if (this.selectedChat?.chatId === chatId) {
+      this.loadGroupParticipants(chatId);
+    }
+
+    this.loadChatList();
+    this.cdr.detectChanges();
+  }
+
+  /** Handle event sent to the user who was just added to a group */
+  private handleAddedToGroup(data: any): void {
+    const chatId = data.chatId;
+    const message = data.message ?? 'You were added to a group';
+    this.toast.show(message, 'success');
+
+    // The new group will appear after reloading chat list
+    this.loadChatList();
+
+    setTimeout(() => {
+      const found = this.chats.find(c => c.chatId === chatId);
+      if (found) this.ngZone.run(() => this.selectChat(found));
+    }, 800);
+
+    this.cdr.detectChanges();
   }
 
   // ══════════════════════════════════════════════════════
@@ -151,6 +337,17 @@ export class Messages implements OnInit, OnDestroy, AfterViewChecked {
       text = first.type === 'image'
         ? `[Image] ${first.name}` : `[File] ${first.name}`;
     }
+
+    let replyTo: any = null;
+    if (m.replyTo) {
+      replyTo = {
+        messageId:  m.replyTo.messageId,
+        text:       m.replyTo.text       ?? '',
+        senderName: m.replyTo.senderName ?? '',
+        type:       m.replyTo.type       ?? 'text',
+      };
+    }
+
     return {
       id: m.messageId,
       sender: m.type === 'system' ? 'System' : (m.sender?.name ?? ''),
@@ -164,6 +361,7 @@ export class Messages implements OnInit, OnDestroy, AfterViewChecked {
       read,
       fileUrl,
       attachments,
+      replyTo,
     };
   }
 
@@ -299,7 +497,14 @@ export class Messages implements OnInit, OnDestroy, AfterViewChecked {
         let data: any;
         try { data = JSON.parse(event.data); } catch { return; }
 
-        if (data.success !== undefined) return;
+        if (data.success !== undefined) {
+          // Handle add_member_ack (success: true with event field)
+          if (data.event === 'add_member_ack') {
+            this.handleAddMemberAck(data);
+            return;
+          }
+          return;
+        }
         if (data.error !== undefined) { console.error('❌ WS error:', data.error); return; }
         if (data.type === 'pong') return;
 
@@ -318,6 +523,10 @@ export class Messages implements OnInit, OnDestroy, AfterViewChecked {
           case 'member_left':       this.handleMemberLeft(data); break;
           case 'member_removed':    this.handleMemberRemoved(data); break;
           case 'you_were_removed':  this.handleYouWereRemoved(data); break;
+          // ── Add member events ──────────────────────────
+          case 'add_member_ack':    this.handleAddMemberAck(data); break;
+          case 'member_added':      this.handleMemberAdded(data); break;
+          case 'added_to_group':    this.handleAddedToGroup(data); break;
           default: console.warn('⚠️ Unknown WS event:', data.event);
         }
       });
@@ -350,22 +559,20 @@ export class Messages implements OnInit, OnDestroy, AfterViewChecked {
     const chat = this.chats.find(c => c.chatId === chatId);
     if (!chat) return;
 
-    if (chat.messages) {
-      chat.messages = chat.messages.map((m: any) => {
-        if (!m.isDivider && m.status === 'sending' && m.isOwn)
-          return { ...m, id: data.messageId, status: data.status || 'sent' };
-        return m;
-      });
-    }
+    const replyTo = data.replyTo ?? null;
+
+    const patchMsg = (m: any) => {
+      if (!m.isDivider && m.status === 'sending' && m.isOwn)
+        return { ...m, id: data.messageId, status: data.status || 'sent', replyTo };
+      return m;
+    };
+
+    if (chat.messages) chat.messages = chat.messages.map(patchMsg);
 
     if (this.selectedChat?.chatId === chatId && this.selectedChat.messages) {
       this.selectedChat = {
         ...this.selectedChat,
-        messages: this.selectedChat.messages.map((m: any) => {
-          if (!m.isDivider && m.status === 'sending' && m.isOwn)
-            return { ...m, id: data.messageId, status: data.status || 'sent' };
-          return m;
-        }),
+        messages: this.selectedChat.messages.map(patchMsg),
       };
     }
     this.cdr.detectChanges();
@@ -527,14 +734,12 @@ export class Messages implements OnInit, OnDestroy, AfterViewChecked {
     });
   }
 
-  // ── Someone left the group ────────────────────────────
   handleMemberLeft(data: any): void {
     this.appendSystemMessage(data.chatId, data.message ?? `${data.userName} left the group`);
     this.loadChatList();
     this.cdr.detectChanges();
   }
 
-  // ── Admin removed someone ─────────────────────────────
   handleMemberRemoved(data: any): void {
     const chatId = data.chatId;
     this.appendSystemMessage(chatId, data.message ?? `${data.removedName} was removed`);
@@ -552,7 +757,6 @@ export class Messages implements OnInit, OnDestroy, AfterViewChecked {
     this.cdr.detectChanges();
   }
 
-  // ── Current user was removed ──────────────────────────
   handleYouWereRemoved(data: any): void {
     const chatId = data.chatId;
     this.toast.show('You have been removed from the group', 'error');
@@ -598,7 +802,6 @@ export class Messages implements OnInit, OnDestroy, AfterViewChecked {
           updatedAt: c.updatedAt,
           userId: c.type === 'individual' ? String(c.participants?.[0]?.userId) : null,
           roomId: c.type === 'group' ? c.chatId : null,
-          // ✅ Map participants properly
           participants: (c.participants ?? []).map((p: any) => ({
             userId: p.userId,
             name: p.name,
@@ -696,7 +899,7 @@ export class Messages implements OnInit, OnDestroy, AfterViewChecked {
   }
 
   // ══════════════════════════════════════════════════════
-  // ✅ LOAD GROUP PARTICIPANTS — dedicated API call
+  // LOAD GROUP PARTICIPANTS
   // ══════════════════════════════════════════════════════
 
   loadGroupParticipants(chatId: string): void {
@@ -705,11 +908,8 @@ export class Messages implements OnInit, OnDestroy, AfterViewChecked {
     this.api.getGroupParticipants(chatId).subscribe({
       next: (pRes: any) => {
         this.isLoadingParticipants = false;
-        console.log('👥 Participants API response:', pRes);
-
         if (!pRes.success) return;
 
-        // ✅ Handle both array directly or wrapped in data
         const raw: any[] = Array.isArray(pRes.data) ? pRes.data : (pRes.data?.items ?? []);
 
         const participants = raw.map((p: any) => ({
@@ -720,16 +920,11 @@ export class Messages implements OnInit, OnDestroy, AfterViewChecked {
           isOnline: p.isOnline ?? false,
         }));
 
-        console.log('✅ Mapped participants:', participants);
-
-        // ✅ Check if current user is admin
         const me = participants.find(
           (p: any) => String(p.userId) === String(this.currentUserId)
         );
         this.isCurrentUserAdmin = me?.role === 'admin';
-        console.log('👤 isCurrentUserAdmin:', this.isCurrentUserAdmin);
 
-        // ✅ Update selectedChat
         if (this.selectedChat?.chatId === chatId) {
           this.selectedChat = {
             ...this.selectedChat,
@@ -738,7 +933,6 @@ export class Messages implements OnInit, OnDestroy, AfterViewChecked {
           };
         }
 
-        // ✅ Update chats array
         const chatIdx = this.chats.findIndex(c => c.chatId === chatId);
         if (chatIdx !== -1) {
           this.chats = [
@@ -746,6 +940,11 @@ export class Messages implements OnInit, OnDestroy, AfterViewChecked {
             { ...this.chats[chatIdx], participants, members: participants.length },
             ...this.chats.slice(chatIdx + 1),
           ];
+        }
+
+        // Refresh add-member search results if modal is open
+        if (this.showGroupInfoModal && this.addMemberSearch.trim()) {
+          this.searchEmployeesToAdd(this.addMemberSearch.trim());
         }
 
         this.cdr.detectChanges();
@@ -766,6 +965,7 @@ export class Messages implements OnInit, OnDestroy, AfterViewChecked {
     this.isTyping = chat.isTyping ?? false;
     this.typingPerson = chat.typingPerson ?? '';
     this.isCurrentUserAdmin = false;
+    this.replyingTo = null;
 
     const idx = this.chats.findIndex(c => c.chatId === chat.chatId);
     if (idx !== -1) {
@@ -776,7 +976,6 @@ export class Messages implements OnInit, OnDestroy, AfterViewChecked {
       ];
     }
 
-    // ✅ Always fetch fresh participants for group
     if (chat.isGroup) {
       this.loadGroupParticipants(chat.chatId);
     }
@@ -803,6 +1002,8 @@ export class Messages implements OnInit, OnDestroy, AfterViewChecked {
     const tempId = Date.now();
     const now = new Date().toISOString();
 
+    const currentReply = this.replyingTo;
+
     const tempMsg: any = {
       id: tempId,
       sender: this.currentUserName,
@@ -817,6 +1018,12 @@ export class Messages implements OnInit, OnDestroy, AfterViewChecked {
       attachments: [],
       tempId,
       isDivider: false,
+      replyTo: currentReply ? {
+        messageId:  currentReply.id,
+        text:       this.getReplyPreviewText(currentReply),
+        senderName: currentReply.sender,
+        type:       currentReply.type,
+      } : null,
     };
 
     const existingMsgs = this.selectedChat.messages || [];
@@ -847,16 +1054,22 @@ export class Messages implements OnInit, OnDestroy, AfterViewChecked {
     }
 
     this.newMessage = '';
+    this.replyingTo = null;
     this.shouldScroll = true;
     this.cdr.detectChanges();
 
-    this.ws.send(JSON.stringify({
+    const wsPayload: any = {
       type: 'new_message',
       chatId: this.selectedChat.chatId,
       text: messageText,
       msgType: 'text',
       tempId,
-    }));
+    };
+    if (currentReply?.id) {
+      wsPayload.replyToId = currentReply.id;
+    }
+
+    this.ws.send(JSON.stringify(wsPayload));
     this.ws.send(JSON.stringify({ type: 'typing_stop', chatId: this.selectedChat.chatId }));
   }
 
@@ -917,13 +1130,21 @@ export class Messages implements OnInit, OnDestroy, AfterViewChecked {
     if (this.ws?.readyState !== WebSocket.OPEN) {
       this.toast.show('Not connected.', 'error'); return;
     }
-    this.ws.send(JSON.stringify({
+
+    const currentReply = this.replyingTo;
+    const wsPayload: any = {
       type: 'new_message',
       chatId: this.selectedChat.chatId,
       msgType,
       text: '',
       attachments,
-    }));
+    };
+    if (currentReply?.id) {
+      wsPayload.replyToId = currentReply.id;
+    }
+    this.ws.send(JSON.stringify(wsPayload));
+    this.replyingTo = null;
+
     const now = new Date().toISOString();
     const existingMsgs = this.selectedChat.messages || [];
     const newMsgs = [...existingMsgs];
@@ -942,6 +1163,12 @@ export class Messages implements OnInit, OnDestroy, AfterViewChecked {
         fileUrl: fullUrl,
         attachments: [{ url: fullUrl, name: att.name, type: att.type }],
         isDivider: false,
+        replyTo: currentReply ? {
+          messageId:  currentReply.id,
+          text:       this.getReplyPreviewText(currentReply),
+          senderName: currentReply.sender,
+          type:       currentReply.type,
+        } : null,
       });
     });
     this.selectedChat = { ...this.selectedChat, messages: newMsgs };
@@ -1016,14 +1243,19 @@ export class Messages implements OnInit, OnDestroy, AfterViewChecked {
   openGroupInfoModal(): void {
     if (!this.selectedChat?.isGroup) return;
     this.editGroupName = this.selectedChat.name;
+    this.addMemberSearch = '';
+    this.addMemberResults = [];
+    this.isAddingMember = null;
     this.showGroupInfoModal = true;
-    // ✅ Re-fetch participants every time modal opens (fresh data)
     this.loadGroupParticipants(this.selectedChat.chatId);
   }
 
   closeGroupInfoModal(): void {
     this.showGroupInfoModal = false;
     this.editGroupName = '';
+    this.addMemberSearch = '';
+    this.addMemberResults = [];
+    this.isAddingMember = null;
   }
 
   saveGroupInfo(): void {
@@ -1063,7 +1295,6 @@ export class Messages implements OnInit, OnDestroy, AfterViewChecked {
     this.cdr.detectChanges();
   }
 
-  // ✅ Remove member (admin only)
   removeMember(participant: any): void {
     if (!this.selectedChat?.isGroup || !this.isCurrentUserAdmin) return;
     if (String(participant.userId) === String(this.currentUserId)) return;
@@ -1078,7 +1309,6 @@ export class Messages implements OnInit, OnDestroy, AfterViewChecked {
       }));
     }
 
-    // Optimistic update
     this.selectedChat = {
       ...this.selectedChat,
       participants: this.selectedChat.participants.filter(

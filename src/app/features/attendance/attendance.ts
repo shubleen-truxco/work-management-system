@@ -71,12 +71,14 @@ export class Attendance implements OnInit {
     this.api.getAttendanceReport(start, end).subscribe({
       next: (res: any) => {
         this.isLoading = false;
+        this.totalPages = res.data?.totalPages || 1;
+this.page = res.data?.currentPage || 1;
         if (!res.success) {
           this.toast.show(res.message || 'Failed to load attendance', 'error');
           return;
         }
 
-        this.allRecords = (res.data || []).map((r: any) => ({
+       this.allRecords = (res.data?.items || []).map((r: any) => ({
           empId:        r.empId || ('EMP-' + r.userId),
           name:         r.employeeName || '—',
           date:         r.attendanceDate,
@@ -115,9 +117,13 @@ export class Attendance implements OnInit {
       );
     }
     this.totalPages  = Math.max(1, Math.ceil(data.length / this.pageSize));
-    this.filteredData = this.viewMode === 'day'
-      ? data
-      : data.slice((this.page - 1) * this.pageSize, this.page * this.pageSize);
+    this.filteredData = data.slice(
+  (this.page - 1) * this.pageSize,
+  this.page * this.pageSize
+);
+    // this.filteredData = this.viewMode === 'day'
+    //   ? data
+    //   : data.slice((this.page - 1) * this.pageSize, this.page * this.pageSize);
   }
 
   filterData(): void { this.page = 1; this.applySearch(); }
