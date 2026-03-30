@@ -1,0 +1,271 @@
+<div class="app-shell">
+  <app-sidebar></app-sidebar>
+
+  <div class="al-page">
+
+    <!-- ══════ PAGE HEADER ══════ -->
+    <header class="al-header">
+      <div class="al-header-left">
+        <div class="al-header-icon">
+          <span class="material-icons">manage_search</span>
+        </div>
+        <div>
+          <p class="al-label">SYSTEM</p>
+          <h1 class="al-title">Activity Log</h1>
+        </div>
+      </div>
+      <div class="al-header-right">
+        <button class="al-export-btn" (click)="exportCsv()" title="Export current page as CSV">
+          <span class="material-icons">download</span>
+          <span>Export CSV</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- ══════ STATS STRIP ══════ -->
+    <div class="al-stats-strip">
+      <div class="al-stat">
+        <span class="al-stat-value">{{ stats.total | number }}</span>
+        <span class="al-stat-label">Total Records</span>
+      </div>
+      <div class="al-stat-div"></div>
+      <div class="al-stat">
+        <span class="al-stat-value">{{ stats.today | number }}</span>
+        <span class="al-stat-label">Today</span>
+      </div>
+      <div class="al-stat-div"></div>
+      <div class="al-stat">
+        <span class="al-stat-value">{{ stats.thisWeek | number }}</span>
+        <span class="al-stat-label">This Page / Week</span>
+      </div>
+      <div class="al-stat-div"></div>
+      <div class="al-stat">
+        <span class="al-stat-value">{{ filteredLogs.length | number }}</span>
+        <span class="al-stat-label">Showing</span>
+      </div>
+    </div>
+
+    <!-- ══════ TABS ══════ -->
+    <nav class="al-tabs">
+      <button class="al-tab" [class.active]="activeTab === 'my'" (click)="setTab('my')">
+        <span class="material-icons">person</span>
+        My Activity
+      </button>
+      <ng-container *ngIf="isAdmin">
+        <button class="al-tab" [class.active]="activeTab === 'all'" (click)="setTab('all')">
+          <span class="material-icons">groups</span>
+          All Users
+        </button>
+        <button class="al-tab" [class.active]="activeTab === 'user'" (click)="setTab('user')">
+          <span class="material-icons">manage_accounts</span>
+          By User
+        </button>
+        <button class="al-tab" [class.active]="activeTab === 'entity'" (click)="setTab('entity')">
+          <span class="material-icons">link</span>
+          By Entity
+        </button>
+      </ng-container>
+    </nav>
+
+    <!-- ══════ FILTER BAR ══════ -->
+    <div class="al-filter-bar">
+
+      <!-- Search -->
+      <div class="al-search-wrap">
+        <span class="material-icons al-search-icon">search</span>
+        <input
+          class="al-search"
+          type="text"
+          placeholder="Search logs..."
+          [(ngModel)]="searchQuery"
+          (input)="onSearchChange()" />
+        <button class="al-search-clear" *ngIf="searchQuery" (click)="searchQuery = ''; onSearchChange()">
+          <span class="material-icons">close</span>
+        </button>
+      </div>
+
+      <!-- Module filter (not shown in entity tab) -->
+      <div class="al-filter-group" *ngIf="activeTab !== 'entity'">
+        <label class="al-filter-label">Module</label>
+        <select class="al-select" [(ngModel)]="selectedModule" (change)="onFilterChange()">
+          <option *ngFor="let m of moduleOptions" [value]="m">{{ m }}</option>
+        </select>
+      </div>
+
+      <!-- Action filter (my + user tabs) -->
+      <div class="al-filter-group" *ngIf="activeTab === 'my' || activeTab === 'user'">
+        <label class="al-filter-label">Action</label>
+        <select class="al-select" [(ngModel)]="selectedAction" (change)="onFilterChange()">
+          <option *ngFor="let a of actionOptions" [value]="a">{{ a }}</option>
+        </select>
+      </div>
+
+      <!-- User ID input (admin → user tab) -->
+      <div class="al-filter-group" *ngIf="activeTab === 'user' && isAdmin">
+        <label class="al-filter-label">User ID</label>
+        <div class="al-search-wrap al-uid-wrap">
+          <input
+            class="al-search"
+            type="text"
+            placeholder="Enter user ID..."
+            [(ngModel)]="targetUserId"
+            (keyup.enter)="loadUserActivity()" />
+          <button class="al-fetch-btn" (click)="loadUserActivity()">
+            <span class="material-icons">arrow_forward</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Entity query inputs -->
+      <ng-container *ngIf="activeTab === 'entity'">
+        <div class="al-filter-group">
+          <label class="al-filter-label">Module / Type</label>
+          <input class="al-select" type="text" placeholder="e.g. TASK"
+            [(ngModel)]="entityModule" style="text-transform:uppercase" />
+        </div>
+        <div class="al-filter-group">
+          <label class="al-filter-label">Entity ID</label>
+          <div class="al-search-wrap al-uid-wrap">
+            <input class="al-search" type="text" placeholder="e.g. 42"
+              [(ngModel)]="entityId" (keyup.enter)="loadEntityActivity()" />
+            <button class="al-fetch-btn" (click)="loadEntityActivity()">
+              <span class="material-icons">arrow_forward</span>
+            </button>
+          </div>
+        </div>
+      </ng-container>
+
+      <!-- Spacer -->
+      <div class="al-filter-spacer"></div>
+
+      <!-- Reload -->
+      <button class="al-reload-btn" (click)="load()" [class.spinning]="isLoading">
+        <span class="material-icons">refresh</span>
+      </button>
+    </div>
+
+    <!-- ══════ LOG TABLE ══════ -->
+    <div class="al-table-wrap">
+
+      <!-- Loading overlay -->
+      <div class="al-loading-overlay" *ngIf="isLoading">
+        <div class="al-spinner">
+          <span class="material-icons spin">sync</span>
+          <span>Loading records...</span>
+        </div>
+      </div>
+
+      <!-- Empty state -->
+      <div class="al-empty" *ngIf="!isLoading && filteredLogs.length === 0">
+        <span class="material-icons">search_off</span>
+        <p>No activity records found</p>
+        <span class="al-empty-hint">Try adjusting your filters or search query</span>
+      </div>
+
+      <!-- Table -->
+      <table class="al-table" *ngIf="!isLoading && filteredLogs.length > 0">
+        <thead>
+          <tr>
+            <th class="col-time">Timestamp</th>
+            <th class="col-user">User</th>
+            <th class="col-module">Module</th>
+            <th class="col-action">Action</th>
+            <th class="col-desc">Description</th>
+            <th class="col-entity">Entity</th>
+            <th class="col-ip">IP</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr
+            *ngFor="let log of filteredLogs; trackBy: trackById"
+            class="al-row"
+            [attr.data-action]="log.action?.toLowerCase()">
+
+            <!-- Timestamp -->
+            <td class="col-time">
+              <div class="al-time-wrap">
+                <span class="al-timestamp">{{ formatTimestamp(getTimestamp(log)) }}</span>
+                <span class="al-reltime">{{ formatRelativeTime(getTimestamp(log)) }}</span>
+              </div>
+            </td>
+
+            <!-- User -->
+            <td class="col-user">
+              <div class="al-user-cell">
+                <div class="al-user-avatar">
+                  {{ (getUserName(log) || '?').charAt(0).toUpperCase() }}
+                </div>
+                <span class="al-user-name">{{ getUserName(log) }}</span>
+              </div>
+            </td>
+
+            <!-- Module -->
+            <td class="col-module">
+              <div class="al-module-cell">
+                <span class="material-icons al-module-icon">{{ getModuleIcon(log.module) }}</span>
+                <span class="al-module-name">{{ log.module ?? '—' }}</span>
+              </div>
+            </td>
+
+            <!-- Action -->
+            <td class="col-action">
+              <span class="al-badge" [class]="getActionBadgeClass(log.action)">
+                {{ log.action ?? '—' }}
+              </span>
+            </td>
+
+            <!-- Description -->
+            <td class="col-desc">
+              <span class="al-desc" [title]="getDescription(log)">
+                {{ getDescription(log) || '—' }}
+              </span>
+            </td>
+
+            <!-- Entity -->
+            <td class="col-entity">
+              <span class="al-entity" *ngIf="getEntityRef(log); else noEntity">
+                {{ getEntityRef(log) }}
+              </span>
+              <ng-template #noEntity><span class="al-dash">—</span></ng-template>
+            </td>
+
+            <!-- IP -->
+            <td class="col-ip">
+              <span class="al-ip" *ngIf="getIpAddress(log); else noIp">
+                {{ getIpAddress(log) }}
+              </span>
+              <ng-template #noIp><span class="al-dash">—</span></ng-template>
+            </td>
+
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- ══════ PAGINATION ══════ -->
+    <div class="al-pagination" *ngIf="totalPages > 1 && !isLoading">
+      <div class="al-page-info">
+        Page {{ currentPage }} of {{ totalPages }}
+        &nbsp;·&nbsp;
+        {{ totalItems | number }} total records
+      </div>
+      <div class="al-page-controls">
+        <button class="al-page-btn" [disabled]="currentPage === 1"
+          (click)="goToPage(currentPage - 1)">
+          <span class="material-icons">chevron_left</span>
+        </button>
+        <ng-container *ngFor="let p of pageNumbers">
+          <span class="al-ellipsis" *ngIf="p === -1">…</span>
+          <button class="al-page-btn" *ngIf="p !== -1"
+            [class.active]="p === currentPage"
+            (click)="goToPage(p)">{{ p }}</button>
+        </ng-container>
+        <button class="al-page-btn" [disabled]="currentPage === totalPages"
+          (click)="goToPage(currentPage + 1)">
+          <span class="material-icons">chevron_right</span>
+        </button>
+      </div>
+    </div>
+
+  </div>
+</div>

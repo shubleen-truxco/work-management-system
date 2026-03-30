@@ -287,4 +287,85 @@ export class ApiService {
   }
 
 
+  //  AUDIT ACTIVITY 
+  getMyActivity(
+  page    : number = 1,
+  size    : number = 20,
+  module ?: string,
+  action ?: string,
+): Observable<any> {
+  let params = new HttpParams()
+    .set('page', page)
+    .set('size', size);
+  if (module) params = params.set('module', module);
+  if (action) params = params.set('action', action);
+ 
+  return this.http.get(`${this.baseUrl}/my-activity`, {
+    params,
+  });
+}
+ 
+// ── Recent 10 for dashboard widget ──────────────────────────────────
+// GET /my-activity/recent
+getRecentActivity(): Observable<any> {
+  return this.http.get(`${this.baseUrl}/my-activity/recent`, {
+  });
+}
+ 
+// ── Query by entity type + id ────────────────────────────────────────
+// GET /activity?module=TASK&id=12&page=1&size=20
+getActivityByTypeAndId(
+  module : string,
+  id     : string,
+  page   : number = 1,
+  size   : number = 20
+): Observable<any> {
+  const params = new HttpParams()
+    .set('module', module)
+    .set('id', id)
+    .set('page', page)
+    .set('size', size);
+ 
+  return this.http.get(`${this.baseUrl}/activity`, {
+    params,
+  });
+}
+ 
+// ── Admin: view any specific user's activity ─────────────────────────
+// GET /activity/{userId}?page=1&size=20&module=ATTENDANCE&action=CHECK_IN
+getActivityForUser(
+  userId  : number | string,
+  page    : number = 1,
+  size    : number = 20,
+  module ?: string,
+  action ?: string
+): Observable<any> {
+  let params = new HttpParams()
+    .set('page', page)
+    .set('size', size);
+  if (module) params = params.set('module', module);
+  if (action) params = params.set('action', action);
+ 
+  return this.http.get(`${this.baseUrl}/activity/${userId}`, {
+    params,
+  });
+}
+ 
+// ── Admin: all users combined ────────────────────────────────────────
+// GET /activity/all?page=1&size=50&module=ATTENDANCE
+getAllActivity(
+  page    : number = 1,
+  size    : number = 50,
+  module ?: string
+): Observable<any> {
+  let params = new HttpParams()
+    .set('page', page)
+    .set('size', size);
+  if (module) params = params.set('module', module);
+ 
+  return this.http.get(`${this.baseUrl}/activity/all`, {
+    params,
+  });
+}
+
 }

@@ -234,6 +234,236 @@
           </div>
         </div>
 
+        <!-- ── Activity Logs ── -->
+        <div class="settings-panel" *ngIf="activePanel === 'activity-logs'">
+
+  <!-- Panel heading -->
+  <div class="panel-header">
+    <div class="panel-header-icon">
+      <span class="material-icons">manage_search</span>
+    </div>
+    <div>
+      <h2 class="panel-title">Activity Log</h2>
+      <p class="panel-subtitle">Track every action across all modules</p>
+    </div>
+    <button class="al-s-export-btn" (click)="alExportCsv()">
+      <span class="material-icons">download</span> Export CSV
+    </button>
+  </div>
+
+  <!-- Stats strip -->
+  <div class="al-s-stats">
+    <div class="al-s-stat">
+      <span class="al-s-stat-val">{{ alStats.total | number }}</span>
+      <span class="al-s-stat-lbl">Total</span>
+    </div>
+    <div class="al-s-stat-sep"></div>
+    <div class="al-s-stat">
+      <span class="al-s-stat-val">{{ alStats.today | number }}</span>
+      <span class="al-s-stat-lbl">Today</span>
+    </div>
+    <div class="al-s-stat-sep"></div>
+    <div class="al-s-stat">
+      <span class="al-s-stat-val">{{ alStats.week | number }}</span>
+      <span class="al-s-stat-lbl">This Week</span>
+    </div>
+    <div class="al-s-stat-sep"></div>
+    <div class="al-s-stat">
+      <span class="al-s-stat-val">{{ alFilteredLogs.length | number }}</span>
+      <span class="al-s-stat-lbl">Showing</span>
+    </div>
+  </div>
+
+  <!-- Sub-tabs -->
+  <div class="al-s-tabs">
+    <button class="al-s-tab" [class.active]="alActiveTab === 'my'" (click)="alSetTab('my')">
+      <span class="material-icons">person</span> My Activity
+    </button>
+    <ng-container *ngIf="isAdmin">
+      <button class="al-s-tab" [class.active]="alActiveTab === 'all'" (click)="alSetTab('all')">
+        <span class="material-icons">groups</span> All Users
+      </button>
+      <button class="al-s-tab" [class.active]="alActiveTab === 'user'" (click)="alSetTab('user')">
+        <span class="material-icons">manage_accounts</span> By User
+      </button>
+      <button class="al-s-tab" [class.active]="alActiveTab === 'entity'" (click)="alSetTab('entity')">
+        <span class="material-icons">link</span> By Entity
+      </button>
+    </ng-container>
+  </div>
+
+  <!-- Filter bar -->
+  <div class="al-s-filters">
+
+    <!-- Search -->
+    <div class="al-s-search-wrap">
+      <span class="material-icons al-s-search-icon">search</span>
+      <input class="al-s-search" type="text" placeholder="Search logs..."
+        [(ngModel)]="alSearch" (input)="alOnSearchChange()" />
+      <button class="al-s-clear" *ngIf="alSearch" (click)="alSearch = ''; alOnSearchChange()">
+        <span class="material-icons">close</span>
+      </button>
+    </div>
+
+    <!-- Module filter -->
+    <div class="al-s-filter-grp" *ngIf="alActiveTab !== 'entity'">
+      <label class="al-s-filter-lbl">Module</label>
+      <select class="al-s-select" [(ngModel)]="alModule" (change)="alOnFilterChange()">
+        <option *ngFor="let m of alModuleOptions" [value]="m">{{ m }}</option>
+      </select>
+    </div>
+
+    <!-- Action filter -->
+    <div class="al-s-filter-grp" *ngIf="alActiveTab === 'my' || alActiveTab === 'user'">
+      <label class="al-s-filter-lbl">Action</label>
+      <select class="al-s-select" [(ngModel)]="alAction" (change)="alOnFilterChange()">
+        <option *ngFor="let a of alActionOptions" [value]="a">{{ a }}</option>
+      </select>
+    </div>
+
+    <!-- User ID input -->
+    <div class="al-s-filter-grp" *ngIf="alActiveTab === 'user' && isAdmin">
+      <label class="al-s-filter-lbl">User ID</label>
+      <div class="al-s-uid-wrap">
+        <input class="al-s-search" type="text" placeholder="Enter user ID..."
+          [(ngModel)]="alTargetUserId" (keyup.enter)="alLoadUser()" />
+        <button class="al-s-go-btn" (click)="alLoadUser()">
+          <span class="material-icons">arrow_forward</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Entity inputs -->
+    <ng-container *ngIf="alActiveTab === 'entity'">
+      <div class="al-s-filter-grp">
+        <label class="al-s-filter-lbl">Module / Type</label>
+        <input class="al-s-select" type="text" placeholder="e.g. TASK"
+          [(ngModel)]="alEntityModule" style="text-transform:uppercase" />
+      </div>
+      <div class="al-s-filter-grp">
+        <label class="al-s-filter-lbl">Entity ID</label>
+        <div class="al-s-uid-wrap">
+          <input class="al-s-search" type="text" placeholder="e.g. 42"
+            [(ngModel)]="alEntityId" (keyup.enter)="alLoadEntity()" />
+          <button class="al-s-go-btn" (click)="alLoadEntity()">
+            <span class="material-icons">arrow_forward</span>
+          </button>
+        </div>
+      </div>
+    </ng-container>
+
+    <div style="flex:1"></div>
+
+    <button class="al-s-reload-btn" (click)="loadActivityLogs()" [class.spinning]="alLoading"
+      title="Reload">
+      <span class="material-icons">refresh</span>
+    </button>
+  </div>
+
+  <!-- Table -->
+  <div class="al-s-table-wrap">
+
+    <!-- Loading -->
+    <div class="al-s-loading" *ngIf="alLoading">
+      <span class="material-icons spin">sync</span>
+      <span>Loading records...</span>
+    </div>
+
+    <!-- Empty -->
+    <div class="al-s-empty" *ngIf="!alLoading && alFilteredLogs.length === 0">
+      <span class="material-icons">search_off</span>
+      <p>No activity records found</p>
+      <small>Adjust filters or search query</small>
+    </div>
+
+    <!-- Data table -->
+    <table class="al-s-table" *ngIf="!alLoading && alFilteredLogs.length > 0">
+      <thead>
+        <tr>
+          <th>Timestamp</th>
+          <th>User</th>
+          <th>Module</th>
+          <th>Action</th>
+          <th>Description</th>
+          <th>Entity</th>
+          <th>IP</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let log of alFilteredLogs; trackBy: alTrackById"
+          class="al-s-row" [attr.data-action]="log.action?.toLowerCase()">
+
+          <!-- Timestamp -->
+          <td>
+            <span class="al-s-ts">{{ alFormatTime(alGetTs(log)) }}</span>
+            <span class="al-s-rel">{{ alRelativeTime(alGetTs(log)) }}</span>
+          </td>
+
+          <!-- User -->
+          <td>
+            <div class="al-s-user">
+              <div class="al-s-avatar">{{ (alGetUser(log) || '?').charAt(0).toUpperCase() }}</div>
+              <span>{{ alGetUser(log) }}</span>
+            </div>
+          </td>
+
+          <!-- Module -->
+          <td>
+            <div class="al-s-module">
+              <span class="material-icons">{{ alGetModuleIcon(log.module) }}</span>
+              <span>{{ log.module ?? '—' }}</span>
+            </div>
+          </td>
+
+          <!-- Action badge -->
+          <td>
+            <span class="al-s-badge" [class]="alGetBadgeClass(log.action)">
+              {{ log.action ?? '—' }}
+            </span>
+          </td>
+
+          <!-- Description -->
+          <td>
+            <span class="al-s-desc" [title]="alGetDesc(log)">{{ alGetDesc(log) || '—' }}</span>
+          </td>
+
+          <!-- Entity -->
+          <td>
+            <span class="al-s-entity" *ngIf="alGetEntity(log)">{{ alGetEntity(log) }}</span>
+            <span class="al-s-dash"  *ngIf="!alGetEntity(log)">—</span>
+          </td>
+
+          <!-- IP -->
+          <td>
+            <span class="al-s-ip" *ngIf="alGetIp(log)">{{ alGetIp(log) }}</span>
+            <span class="al-s-dash" *ngIf="!alGetIp(log)">—</span>
+          </td>
+
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Pagination -->
+  <div class="al-s-pagination" *ngIf="alTotalPages > 1 && !alLoading">
+    <span class="al-s-page-info">Page {{ alCurrentPage }} of {{ alTotalPages }} · {{ alTotalItems | number }} records</span>
+    <div class="al-s-page-controls">
+      <button class="al-s-page-btn" [disabled]="alCurrentPage === 1" (click)="alGoToPage(alCurrentPage - 1)">
+        <span class="material-icons">chevron_left</span>
+      </button>
+      <ng-container *ngFor="let p of alPageNumbers">
+        <span class="al-s-ellipsis" *ngIf="p === -1">…</span>
+        <button class="al-s-page-btn" *ngIf="p !== -1"
+          [class.active]="p === alCurrentPage" (click)="alGoToPage(p)">{{ p }}</button>
+      </ng-container>
+      <button class="al-s-page-btn" [disabled]="alCurrentPage === alTotalPages" (click)="alGoToPage(alCurrentPage + 1)">
+        <span class="material-icons">chevron_right</span>
+      </button>
+    </div>
+  </div>
+
+</div>
+
         <!-- ── Notifications ── -->
         <div class="panel" *ngIf="activePanel === 'notifications'">
           <div class="panel-header">
