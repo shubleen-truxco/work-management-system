@@ -5,6 +5,7 @@ import { NotificationService } from './core/services/notification.service';
 
 // ✅ ADD THESE IMPORTS
 import { initializeApp } from 'firebase/app';
+import { ThemeService } from './core/services/theme.service';
 
 @Component({
   selector: 'app-root',
@@ -24,11 +25,11 @@ export class App implements OnInit {
     appId: "1:428864371867:web:788c425c0c3399be751a3e"
   };
 
-  constructor(private notificationService: NotificationService) {}
+  constructor(private notificationService: NotificationService, private theme: ThemeService) { }
 
   ngOnInit(): void {
+    this.theme.init();
     initializeApp(this.firebaseConfig);
-
     this.notificationService.initListener();
   }
 }

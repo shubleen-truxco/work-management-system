@@ -6,35 +6,36 @@ import { ToastService } from '../../shared/toast/toast.service';
 import { Subject } from 'rxjs';
 import { takeUntil, debounceTime, distinctUntilChanged } from 'rxjs/operators';
 import { Sidebar } from '../../shared/sidebar/sidebar';
+import { ThemeService } from '../../core/services/theme.service';
 
 // ── Action badge color map ─────────────────────────────────────────
 const ACTION_COLORS: Record<string, string> = {
-  CREATE:    'al-badge-green',
-  UPDATE:    'al-badge-blue',
-  DELETE:    'al-badge-red',
-  CHECK_IN:  'al-badge-teal',
+  CREATE: 'al-badge-green',
+  UPDATE: 'al-badge-blue',
+  DELETE: 'al-badge-red',
+  CHECK_IN: 'al-badge-teal',
   CHECK_OUT: 'al-badge-orange',
-  APPROVE:   'al-badge-green',
-  REJECT:    'al-badge-red',
-  LOGIN:     'al-badge-purple',
-  LOGOUT:    'al-badge-gray',
-  UPLOAD:    'al-badge-blue',
-  DOWNLOAD:  'al-badge-teal',
-  ASSIGN:    'al-badge-amber',
-  COMPLETE:  'al-badge-green',
-  COMMENT:   'al-badge-purple',
+  APPROVE: 'al-badge-green',
+  REJECT: 'al-badge-red',
+  LOGIN: 'al-badge-purple',
+  LOGOUT: 'al-badge-gray',
+  UPLOAD: 'al-badge-blue',
+  DOWNLOAD: 'al-badge-teal',
+  ASSIGN: 'al-badge-amber',
+  COMPLETE: 'al-badge-green',
+  COMMENT: 'al-badge-purple',
 };
 
 const MODULE_ICONS: Record<string, string> = {
-  TASKS:      'task_alt',
+  TASKS: 'task_alt',
   ATTENDANCE: 'fingerprint',
-  LEAVES:     'event_busy',
-  PROJECTS:   'folder_open',
-  USERS:      'manage_accounts',
-  PAYROLL:    'payments',
-  CHAT:       'chat',
-  SETTINGS:   'settings',
-  REPORTS:    'bar_chart',
+  LEAVES: 'event_busy',
+  PROJECTS: 'folder_open',
+  USERS: 'manage_accounts',
+  PAYROLL: 'payments',
+  CHAT: 'chat',
+  SETTINGS: 'settings',
+  REPORTS: 'bar_chart',
 };
 
 @Component({
@@ -53,20 +54,20 @@ export class Settings implements OnInit {
 
   // ── Nav Sections ──────────────────────────────────────────────────
   generalSettings = [
-    { key: 'company',    label: 'Company Settings', icon: 'business' },
-    { key: 'work-hours', label: 'Work Hours',        icon: 'schedule' },
-    { key: 'appearance', label: 'Appearance',        icon: 'palette'  },
+    { key: 'company', label: 'Company Settings', icon: 'business' },
+    { key: 'work-hours', label: 'Work Hours', icon: 'schedule' },
+    { key: 'appearance', label: 'Appearance', icon: 'palette' },
   ];
 
   managementSettings = [
-    { key: 'designation',     label: 'Designations',    icon: 'work'           },
-    { key: 'task-categories', label: 'Task Categories', icon: 'category'       },
-    { key: 'activity-logs',   label: 'Activity Logs',   icon: 'manage_search'  },
+    { key: 'designation', label: 'Designations', icon: 'work' },
+    { key: 'task-categories', label: 'Task Categories', icon: 'category' },
+    { key: 'activity-logs', label: 'Activity Logs', icon: 'manage_search' },
   ];
 
   systemSettings = [
     { key: 'notifications', label: 'Notifications', icon: 'notifications' },
-    { key: 'security',      label: 'Security',      icon: 'security'      },
+    { key: 'security', label: 'Security', icon: 'security' },
   ];
 
   setPanel(key: string): void {
@@ -84,7 +85,7 @@ export class Settings implements OnInit {
   // ══════════════════════════════════════════════════════════════════
 
   private alDestroy$ = new Subject<void>();
-  private alSearch$  = new Subject<string>();
+  private alSearch$ = new Subject<string>();
 
   // Tabs
   alActiveTab: 'my' | 'all' | 'user' | 'entity' = 'my';
@@ -99,22 +100,22 @@ export class Settings implements OnInit {
 
   // Entity tab
   alEntityModule = '';
-  alEntityId     = '';
+  alEntityId = '';
 
   // Data
-  alLogs: any[]  = [];
+  alLogs: any[] = [];
   alAllLogs: any[] = [];
-  alLoading      = false;
+  alLoading = false;
 
   // Pagination
-  alCurrentPage  = 1;
-  alPageSize     = 20;
-  alTotalItems   = 0;
-  alTotalPages   = 1;
+  alCurrentPage = 1;
+  alPageSize = 20;
+  alTotalItems = 0;
+  alTotalPages = 1;
 
   // Options
-  alModuleOptions = ['ALL','TASKS','AUTH','LEAVES','PROJECTS','USERS','PAYROLL','CHAT','SETTINGS','REPORTS'];
-  alActionOptions = ['ALL','CREATE','UPDATE','DELETE','CHECK_IN','CHECK_OUT','APPROVE','REJECT','LOGIN','LOGOUT','UPLOAD','DOWNLOAD','ASSIGN','COMPLETE','COMMENT'];
+  alModuleOptions = ['ALL', 'TASKS', 'AUTH', 'LEAVES', 'PROJECTS', 'USERS', 'PAYROLL', 'CHAT', 'SETTINGS', 'REPORTS'];
+  alActionOptions = ['ALL', 'CREATE', 'UPDATE', 'DELETE', 'CHECK_IN', 'CHECK_OUT', 'APPROVE', 'REJECT', 'LOGIN', 'LOGOUT', 'UPLOAD', 'DOWNLOAD', 'ASSIGN', 'COMPLETE', 'COMMENT'];
 
   // Stats
   alStats = { total: 0, today: 0, week: 0 };
@@ -122,9 +123,9 @@ export class Settings implements OnInit {
   // ── Tab switch ────────────────────────────────────────────────────
   alSetTab(tab: 'my' | 'all' | 'user' | 'entity'): void {
     if (this.alActiveTab === tab) return;
-    this.alActiveTab   = tab;
+    this.alActiveTab = tab;
     this.alCurrentPage = 1;
-    this.alLogs        = [];
+    this.alLogs = [];
     this.loadActivityLogs();
   }
 
@@ -141,9 +142,9 @@ export class Settings implements OnInit {
   // ── Main loader dispatcher ────────────────────────────────────────
   loadActivityLogs(): void {
     switch (this.alActiveTab) {
-      case 'my':     this.alLoadMy();     break;
-      case 'all':    this.alLoadAll();    break;
-      case 'user':   this.alLoadUser();   break;
+      case 'my': this.alLoadMy(); break;
+      case 'all': this.alLoadAll(); break;
+      case 'user': this.alLoadUser(); break;
       case 'entity': this.alLoadEntity(); break;
     }
   }
@@ -157,7 +158,7 @@ export class Settings implements OnInit {
       this.alAction === 'ALL' ? undefined : this.alAction,
     ).subscribe({
       next: (res: any) => this.alHandleResponse(res),
-      error: ()        => this.alHandleError(),
+      error: () => this.alHandleError(),
     });
   }
 
@@ -170,7 +171,7 @@ export class Settings implements OnInit {
       this.alModule === 'ALL' ? undefined : this.alModule,
     ).subscribe({
       next: (res: any) => this.alHandleResponse(res),
-      error: ()        => this.alHandleError(),
+      error: () => this.alHandleError(),
     });
   }
 
@@ -185,7 +186,7 @@ export class Settings implements OnInit {
       this.alAction === 'ALL' ? undefined : this.alAction,
     ).subscribe({
       next: (res: any) => this.alHandleResponse(res),
-      error: ()        => this.alHandleError(),
+      error: () => this.alHandleError(),
     });
   }
 
@@ -199,7 +200,7 @@ export class Settings implements OnInit {
       this.alPageSize,
     ).subscribe({
       next: (res: any) => this.alHandleResponse(res),
-      error: ()        => this.alHandleError(),
+      error: () => this.alHandleError(),
     });
   }
 
@@ -212,11 +213,11 @@ export class Settings implements OnInit {
     }
     const data = res.data;
     if (Array.isArray(data)) {
-      this.alLogs       = data;
+      this.alLogs = data;
       this.alTotalItems = data.length;
       this.alTotalPages = 1;
     } else {
-      this.alLogs       = data?.items ?? data?.content ?? [];
+      this.alLogs = data?.items ?? data?.content ?? [];
       this.alTotalItems = data?.pagination?.totalItems ?? data?.totalElements ?? this.alLogs.length;
       this.alTotalPages = data?.pagination?.totalPages ?? data?.totalPages ?? 1;
     }
@@ -231,9 +232,9 @@ export class Settings implements OnInit {
   }
 
   private alComputeStats(): void {
-    const now      = new Date();
+    const now = new Date();
     const todayStr = now.toDateString();
-    const weekAgo  = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
     this.alStats.total = this.alTotalItems;
     this.alStats.today = this.alLogs.filter(l => {
       const d = new Date(l.timestamp ?? l.createdAt ?? l.loggedAt ?? '');
@@ -254,7 +255,7 @@ export class Settings implements OnInit {
 
   get alPageNumbers(): number[] {
     const total = this.alTotalPages;
-    const cur   = this.alCurrentPage;
+    const cur = this.alCurrentPage;
     if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1);
     const pages: number[] = [1];
     if (cur > 3) pages.push(-1);
@@ -297,21 +298,21 @@ export class Settings implements OnInit {
     if (!raw) return '';
     try {
       const s = Math.floor((Date.now() - new Date(raw).getTime()) / 1000);
-      if (s < 60)  return `${s}s ago`;
+      if (s < 60) return `${s}s ago`;
       const m = Math.floor(s / 60);
-      if (m < 60)  return `${m}m ago`;
+      if (m < 60) return `${m}m ago`;
       const h = Math.floor(m / 60);
-      if (h < 24)  return `${h}h ago`;
+      if (h < 24) return `${h}h ago`;
       return `${Math.floor(h / 24)}d ago`;
     } catch { return ''; }
   }
 
-  alGetTs(log: any):     string { return log.timestamp ?? log.createdAt ?? log.loggedAt ?? log.performedAt ?? ''; }
-  alGetDesc(log: any):   string { return log.description ?? log.details ?? log.message ?? log.note ?? ''; }
-  alGetUser(log: any):   string { return log.userName ?? log.performedBy ?? log.userId ?? '—'; }
+  alGetTs(log: any): string { return log.timestamp ?? log.createdAt ?? log.loggedAt ?? log.performedAt ?? ''; }
+  alGetDesc(log: any): string { return log.description ?? log.details ?? log.message ?? log.note ?? ''; }
+  alGetUser(log: any): string { return log.userName ?? log.performedBy ?? log.userId ?? '—'; }
   alGetEntity(log: any): string {
     const t = log.entityType ?? log.module ?? '';
-    const i = log.entityId   ?? log.referenceId ?? '';
+    const i = log.entityId ?? log.referenceId ?? '';
     if (!t && !i) return '';
     return i ? `${t} #${i}` : t;
   }
@@ -322,17 +323,17 @@ export class Settings implements OnInit {
   // ── Export CSV ────────────────────────────────────────────────────
   alExportCsv(): void {
     const rows = [
-      ['Timestamp','User','Module','Action','Description','Entity','IP'],
+      ['Timestamp', 'User', 'Module', 'Action', 'Description', 'Entity', 'IP'],
       ...this.alFilteredLogs.map(l => [
         this.alFormatTime(this.alGetTs(l)),
         this.alGetUser(l), l.module ?? '', l.action ?? '',
         this.alGetDesc(l), this.alGetEntity(l), this.alGetIp(l),
       ]),
     ];
-    const csv  = rows.map(r => r.map(c => `"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n');
+    const csv = rows.map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\n');
     const blob = new Blob([csv], { type: 'text/csv' });
-    const url  = URL.createObjectURL(blob);
-    const a    = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
     a.href = url; a.download = `activity-log-${Date.now()}.csv`; a.click();
     URL.revokeObjectURL(url);
   }
@@ -400,7 +401,7 @@ export class Settings implements OnInit {
   // ══════════════════════════════════════════════════════════════════
 
   taskCategories: any[] = [];
-  newCategory      = '';
+  newCategory = '';
   newCategoryColor = '#0891b2';
 
   addCategory(): void {
@@ -420,16 +421,16 @@ export class Settings implements OnInit {
   // ══════════════════════════════════════════════════════════════════
 
   emailNotifications = [
-    { icon: 'person_add', label: 'New Employee Added',  desc: 'Get notified when a new employee is added',   enabled: true  },
-    { icon: 'task_alt',   label: 'Task Assigned',       desc: 'Get notified when a task is assigned to you', enabled: true  },
-    { icon: 'warning',    label: 'Attendance Alert',    desc: 'Get alerts for attendance issues',            enabled: false },
-    { icon: 'report',     label: 'Monthly Reports',     desc: 'Receive monthly summary reports via email',   enabled: true  },
+    { icon: 'person_add', label: 'New Employee Added', desc: 'Get notified when a new employee is added', enabled: true },
+    { icon: 'task_alt', label: 'Task Assigned', desc: 'Get notified when a task is assigned to you', enabled: true },
+    { icon: 'warning', label: 'Attendance Alert', desc: 'Get alerts for attendance issues', enabled: false },
+    { icon: 'report', label: 'Monthly Reports', desc: 'Receive monthly summary reports via email', enabled: true },
   ];
 
   pushNotifications = [
-    { icon: 'notifications_active', label: 'Real-time Alerts', desc: 'Instant push notifications for critical events', enabled: true  },
-    { icon: 'chat',                 label: 'Messages',          desc: 'Get push notifications for new messages',        enabled: false },
-    { icon: 'update',               label: 'System Updates',    desc: 'Notifications for system updates',               enabled: true  },
+    { icon: 'notifications_active', label: 'Real-time Alerts', desc: 'Instant push notifications for critical events', enabled: true },
+    { icon: 'chat', label: 'Messages', desc: 'Get push notifications for new messages', enabled: false },
+    { icon: 'update', label: 'System Updates', desc: 'Notifications for system updates', enabled: true },
   ];
 
   saveNotifications(): void { this.toast.show('Notification preferences saved!', 'success'); }
@@ -438,7 +439,7 @@ export class Settings implements OnInit {
   // WORK HOURS
   // ══════════════════════════════════════════════════════════════════
 
-  workHours = { timeIn: '09:00', breakTime: '01:00', workDays: ['mon','tue','wed','thu','fri'] };
+  workHours = { timeIn: '09:00', breakTime: '01:00', workDays: ['mon', 'tue', 'wed', 'thu', 'fri'] };
 
   weekDays = [
     { key: 'sun', label: 'Su' }, { key: 'mon', label: 'Mo' },
@@ -479,19 +480,23 @@ export class Settings implements OnInit {
 
   appearance = { theme: 'light', language: 'en', timezone: 'IST' };
 
-  saveAppearance(): void { this.toast.show('Appearance settings saved!', 'success'); }
-
+  saveAppearance(): void {
+    this.themeService.setTheme(this.appearance.theme as 'light' | 'dark');
+    this.toast.show('Appearance settings saved!', 'success');
+  }
   // ══════════════════════════════════════════════════════════════════
   // LIFECYCLE
   // ══════════════════════════════════════════════════════════════════
 
   constructor(
-    private api   : ApiService,
-    private toast : ToastService,
-    private cdr   : ChangeDetectorRef,
-  ) {}
+    private api: ApiService,
+    private toast: ToastService,
+    private cdr: ChangeDetectorRef,
+    private themeService: ThemeService,
+  ) { }
 
   ngOnInit(): void {
+    this.appearance.theme = this.themeService.getTheme();
     this.fetchDesignations();
 
     // Debounced search for activity log

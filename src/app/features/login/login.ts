@@ -6,6 +6,7 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { ApiService } from '../../core/services/api.service';
 import { AdminLoginToastMessage } from '../../shared/utils/enums';
 import { ToastService } from '../../shared/toast/toast.service';
+import { FcmService } from '../../core/services/fcm.service';
 
 @Component({
   selector: 'app-admin-login',
@@ -27,7 +28,8 @@ export class Login {
     private router: Router,
     private route: ActivatedRoute,
     private toast: ToastService,
-    private api: ApiService
+    private api: ApiService,
+    private fcmService: FcmService   // ✅ ADDED
   ) {
     this.returnUrl = this.route.snapshot.queryParamMap.get('returnUrl');
   }
@@ -40,6 +42,16 @@ export class Login {
     this.errorMessage = '';
   }
 
+  // ✅ Get or generate deviceId
+  private getDeviceId(): string {
+    let id = localStorage.getItem('device_id');
+    if (!id) {
+      id = crypto.randomUUID();
+      localStorage.setItem('device_id', id);
+    }
+    return id;
+  }
+
   async onSubmit(): Promise<void> {
     this.errorMessage = '';
 
@@ -48,19 +60,22 @@ export class Login {
       return;
     }
 
-    this.isLoading = true;  // ← start loading
+    this.isLoading = true;
+
+    const deviceId = this.getDeviceId();
+    const existingToken = localStorage.getItem('fcm_token');
 
     const payload = {
-      username:    this.username,
-      password:    this.password,
-      deviceId:    null,
-      deviceToken: null,
-      deviceType:  null,
+      username: this.username,
+      password: this.password,
+      deviceId: deviceId,
+      deviceToken: existingToken,   // ✅ send if already exists
+      deviceType: 'WEB'
     };
 
     this.api.login(payload).subscribe({
       next: async (res: any) => {
-        this.isLoading = false;  // ← stop loading
+        this.isLoading = false;
 
         if (!res.success) {
           this.errorMessage = res.message || AdminLoginToastMessage.LOGIN_FAILED;
@@ -70,15 +85,14 @@ export class Login {
 
         if (res?.data?.role === 'ADMIN') {
           sessionStorage.setItem('token', res.data.token);
-          sessionStorage.setItem('role',  res.data.role);
-          sessionStorage.setItem('id',    res.data.id);
-          sessionStorage.setItem('user',  JSON.stringify(res.data));
+          sessionStorage.setItem('role', res.data.role);
+          sessionStorage.setItem('id', res.data.id);
+          sessionStorage.setItem('user', JSON.stringify(res.data));
 
-          const successMessage = res.data.role === 'ADMIN'
-            ? AdminLoginToastMessage.ADMIN_LOGIN_SUCCESS
-            : AdminLoginToastMessage.SUB_ADMIN_LOGIN_SUCCESS;
+          // ✅ AFTER LOGIN → request permission + save token
+          await this.fcmService.requestPermission();
 
-          this.toast.show(successMessage, 'success');
+          this.toast.show(AdminLoginToastMessage.ADMIN_LOGIN_SUCCESS, 'success');
           this.router.navigate([this.returnUrl || '/dashboard']);
         } else {
           this.errorMessage = AdminLoginToastMessage.ACCESS_DENIED;

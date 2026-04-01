@@ -291,7 +291,29 @@ export class Messages implements OnInit, OnDestroy, AfterViewChecked {
     this.cdr.detectChanges();
   }
 
-  // ══════════════════════════════════════════════════════
+  handleInAppNotification(data: any): void {
+  console.log('📱 In-app notification:', data);
+  
+  
+  // Show toast/snackbar notification
+  const senderName = data.sender?.name || 'Someone';
+  const message = data.message || 'New message';
+  
+  // Option 1: Use your toast service
+  // this.toastService.show(`${senderName}: ${message}`);
+  
+  // Option 2: Use browser notification (if permitted)
+  if (Notification.permission === 'granted') {
+    new Notification(senderName, {
+      body: message,
+      icon: data.sender?.avatar || '/assets/default-avatar.png',
+      tag: data.chatId // Prevents duplicate notifications
+    });
+  }
+  
+}
+
+// ══════════════════════════════════════════════════════
   // EMOJI
   // ══════════════════════════════════════════════════════
 
@@ -527,6 +549,7 @@ export class Messages implements OnInit, OnDestroy, AfterViewChecked {
           case 'add_member_ack':    this.handleAddMemberAck(data); break;
           case 'member_added':      this.handleMemberAdded(data); break;
           case 'added_to_group':    this.handleAddedToGroup(data); break;
+          case 'in_app_notification': this.handleInAppNotification(data); break;
           default: console.warn('⚠️ Unknown WS event:', data.event);
         }
       });
