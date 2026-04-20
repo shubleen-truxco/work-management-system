@@ -71,30 +71,28 @@ export class FcmService {
         serviceWorkerRegistration: registration,
       });
 
-      if (token) {
-        console.log('🔑 FCM Token:', token);
+      if (!token) return;
 
-        const deviceId = this.getDeviceId();
+      const deviceId = this.getDeviceId();
+      const userId = sessionStorage.getItem('id');
 
         // ✅ Save token locally
-        localStorage.setItem('fcm_token', token);
+      localStorage.setItem('fcm_token', token);
 
-        // ✅ Send to backend (UPDATED)
-        this.api.saveFcmToken({
-          deviceId: deviceId,
-          token: token,
-          deviceType: 'WEB'
-        }).subscribe({
-          next: () => console.log('✅ FCM token saved to server'),
-          error: (e) => console.error('❌ Failed to save FCM token:', e),
-        });
-
-      } else {
-        console.warn('⚠️ No FCM token received');
-      }
+      if (!userId) return;
+      // ✅ ALWAYS send userId
+      this.api.saveFcmToken({
+        userId: Number(userId),
+        deviceId: deviceId,
+        token: token,
+        deviceType: 'WEB'
+      }).subscribe({
+        next: () => console.log('✅ FCM token saved'),
+        error: (e) => console.error('❌ Save token failed', e),
+      });
 
     } catch (e) {
-      console.error('❌ FCM init error:', e);
+      console.error('❌ FCM error:', e);
     }
   }
 
@@ -102,20 +100,14 @@ export class FcmService {
   // ✅ Listen for foreground messages
   // ─────────────────────────────────────────────
   listenForeground(callback: (payload: any) => void): void {
-    try {
-      this.initFirebase();
+    this.initFirebase();
 
-      onMessage(this.messaging, (payload) => {
-        console.log('📩 Foreground message:', payload);
-        callback(payload);
-      });
-
-    } catch (e) {
-      console.error('❌ listenForeground error:', e);
-    }
+    onMessage(this.messaging, (payload) => {
+      callback(payload);
+    });
   }
 
-  onNotificationClick(callback: (data: any) => void) {
+   onNotificationClick(callback: (data: any) => void) {
   navigator.serviceWorker.addEventListener('message', (event: any) => {
     if (event.data?.type === 'NOTIFICATION_CLICK') {
       callback(event.data.payload);
@@ -126,25 +118,17 @@ export class FcmService {
   // ─────────────────────────────────────────────
   // ✅ Remove token on logout (UPDATED)
   // ─────────────────────────────────────────────
- removeToken(): void {
-  const deviceId = localStorage.getItem('device_id');
-  const token = localStorage.getItem('fcm_token');
-  const userId = sessionStorage.getItem('id');
+  removeToken(): void {
+    const userId = sessionStorage.getItem('id');
+    const token = localStorage.getItem('fcm_token');
 
-  if (!deviceId || !userId) {
-    console.warn('⚠️ Missing deviceId or userId');
-    return;
-  }
+    if (!userId || !token) return;
 
-  this.api.removeFcmToken({
-    userId: Number(userId),
-    token: token
-  }).subscribe({
-    next: () => {
-      console.log('✅ FCM token removed from server');
+    this.api.removeFcmToken({
+      userId: Number(userId),
+      token: token
+    }).subscribe(() => {
       localStorage.removeItem('fcm_token');
-    },
-    error: (e) => console.error('❌ Failed to remove FCM token:', e),
-  });
-}
+    });
+  }
 }
